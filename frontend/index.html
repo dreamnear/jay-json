@@ -9,8 +9,19 @@
 </head>
 <body>
 <div class="app-container">
-    <!-- Top Toolbar -->
-    <div class="toolbar">
+    <!-- Custom Title Bar -->
+    <div class="title-bar">
+        <div class="title-bar-content">
+            <span class="title-bar-title">🛠️ JSON Tools</span>
+        </div>
+        <div class="title-bar-actions">
+            <button class="title-bar-btn" onclick="openNewWindow()" title="New Window">
+                ➕
+            </button>
+            <button class="title-bar-btn" onclick="toggleAlwaysOnTop()" id="pin-btn" title="Pin Window">
+                📌
+            </button>
+        </div>
     </div>
 
     <!-- Main Content: Two-Panel Layout -->

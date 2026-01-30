@@ -1,4 +1,5 @@
 import { JSONService } from "../bindings/changeme";
+import { WindowManager } from "../bindings/changeme";
 
 // Elements
 const editor = document.getElementById('json-editor');
@@ -16,6 +17,21 @@ let lastMinifiedJSON = '';
 
 function updateStats() {
     charCount.textContent = `${editor.value.length} chars`;
+}
+
+function isEmptyInput() {
+    return !editor.value.trim();
+}
+
+// Process JSON input: format and minify, caching results
+async function processJSON(input) {
+    const [formatted, minified] = await Promise.all([
+        JSONService.FormatJSON(input, true),
+        JSONService.MinifyJSON(input)
+    ]);
+    lastFormattedJSON = formatted;
+    lastMinifiedJSON = minified;
+    return { formatted, minified };
 }
 
 function setValidationStatus(isValid) {
@@ -48,14 +64,8 @@ function autoValidate() {
             const [isValid] = await JSONService.ValidateJSON(input);
             setValidationStatus(isValid);
 
-            // Auto-format and show in preview when valid
             if (isValid) {
-                const [formatted, minified] = await Promise.all([
-                    JSONService.FormatJSON(input, true),
-                    JSONService.MinifyJSON(input)
-                ]);
-                lastFormattedJSON = formatted;
-                lastMinifiedJSON = minified;
+                const { formatted } = await processJSON(input);
                 showOutput(formatted);
             }
         } catch {
@@ -73,14 +83,6 @@ function showFeedback(message) {
         statusItem.textContent = originalText;
         statusItem.classList.remove('highlight');
     }, 2000);
-}
-
-function animateButton(onclickAttr) {
-    const buttons = document.querySelectorAll(`button[onclick="${onclickAttr}()"]`);
-    buttons.forEach(btn => {
-        btn.classList.add('copied');
-        setTimeout(() => btn.classList.remove('copied'), 600);
-    });
 }
 
 function pressButton(onclickAttr) {
@@ -130,10 +132,6 @@ function showError(message) {
     outputDisplay.innerHTML = `<div class="preview-placeholder" style="color: var(--accent-error);">${message}</div>`;
 }
 
-function isEmptyInput() {
-    return !editor.value.trim();
-}
-
 // -----------------------------------------------------------------------------
 // JSON Operations
 // -----------------------------------------------------------------------------
@@ -147,14 +145,7 @@ async function formatJSON() {
     pressButton('formatJSON');
 
     try {
-        const input = editor.value.trim();
-        const [formatted, minified] = await Promise.all([
-            JSONService.FormatJSON(input, true),
-            JSONService.MinifyJSON(input)
-        ]);
-
-        lastFormattedJSON = formatted;
-        lastMinifiedJSON = minified;
+        const { formatted } = await processJSON(editor.value.trim());
         showOutput(formatted);
     } catch (err) {
         showError(`Error: ${err.message}`);
@@ -171,19 +162,17 @@ async function minifyJSON() {
     pressButton('minifyJSON');
 
     try {
-        const minified = await JSONService.MinifyJSON(editor.value.trim());
-        lastMinifiedJSON = minified;
+        const { minified } = await processJSON(editor.value.trim());
         showOutput(minified);
     } catch (err) {
         showError(`Error: ${err.message}`);
     }
 }
 
-async function copyToClipboard(content, successMsg, functionName) {
+async function copyToClipboard(content, successMsg) {
     try {
         await navigator.clipboard.writeText(content);
         showFeedback(successMsg);
-        animateButton(functionName);
     } catch {
         showFeedback('Failed to copy');
     }
@@ -191,7 +180,7 @@ async function copyToClipboard(content, successMsg, functionName) {
 
 async function copyAsFormatted() {
     if (lastFormattedJSON) {
-        await copyToClipboard(lastFormattedJSON, 'Copied formatted JSON!', 'copyAsFormatted');
+        await copyToClipboard(lastFormattedJSON, 'Copied formatted JSON!');
         return;
     }
 
@@ -201,9 +190,8 @@ async function copyAsFormatted() {
     }
 
     try {
-        const formatted = await JSONService.FormatJSON(editor.value.trim(), true);
-        lastFormattedJSON = formatted;
-        await copyToClipboard(formatted, 'Copied formatted JSON!', 'copyAsFormatted');
+        const { formatted } = await processJSON(editor.value.trim());
+        await copyToClipboard(formatted, 'Copied formatted JSON!');
     } catch {
         showFeedback('Invalid JSON');
     }
@@ -211,7 +199,7 @@ async function copyAsFormatted() {
 
 async function copyAsMinified() {
     if (lastMinifiedJSON) {
-        await copyToClipboard(lastMinifiedJSON, 'Copied minified JSON!', 'copyAsMinified');
+        await copyToClipboard(lastMinifiedJSON, 'Copied minified JSON!');
         return;
     }
 
@@ -221,9 +209,8 @@ async function copyAsMinified() {
     }
 
     try {
-        const minified = await JSONService.MinifyJSON(editor.value.trim());
-        lastMinifiedJSON = minified;
-        await copyToClipboard(minified, 'Copied minified JSON!', 'copyAsMinified');
+        const { minified } = await processJSON(editor.value.trim());
+        await copyToClipboard(minified, 'Copied minified JSON!');
     } catch {
         showFeedback('Invalid JSON');
     }
@@ -237,22 +224,7 @@ async function copyOutput() {
         return;
     }
 
-    const btn = document.querySelector('button[onclick="copyOutput()"]');
-    const originalText = btn.textContent;
-
-    try {
-        await navigator.clipboard.writeText(content);
-        btn.classList.add('copied');
-        btn.textContent = '✓ Copied';
-        showFeedback('Copied to clipboard!');
-
-        setTimeout(() => {
-            btn.textContent = originalText;
-            btn.classList.remove('copied');
-        }, 1500);
-    } catch {
-        showFeedback('Failed to copy');
-    }
+    await copyToClipboard(content, 'Copied to clipboard!');
 }
 
 function clearEditor() {
@@ -286,8 +258,7 @@ editor.addEventListener('input', () => {
 });
 
 document.addEventListener('keydown', (e) => {
-    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-    const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+    const cmdOrCtrl = e.metaKey || e.ctrlKey;
 
     if (!cmdOrCtrl) return;
 
@@ -305,8 +276,8 @@ document.addEventListener('keydown', (e) => {
             break;
         case 'c':
         case 'C':
-            // Only prevent if we're in the editor and there's no selection
-            if (document.activeElement === editor && !editor.value.substring(editor.selectionStart, editor.selectionEnd)) {
+            // Only intercept if in editor with no text selection
+            if (document.activeElement === editor && editor.selectionStart === editor.selectionEnd) {
                 e.preventDefault();
                 copyOutput();
             }
@@ -331,6 +302,36 @@ window.copyAsFormatted = copyAsFormatted;
 window.copyAsMinified = copyAsMinified;
 window.copyOutput = copyOutput;
 window.clearEditor = clearEditor;
+
+// -----------------------------------------------------------------------------
+// Window Management
+// -----------------------------------------------------------------------------
+
+window.openNewWindow = async () => {
+    try {
+        await WindowManager.OpenNewWindow();
+        showFeedback('✓ New window opened');
+    } catch {
+        showFeedback('✗ Failed to open window');
+    }
+};
+
+window.toggleAlwaysOnTop = async () => {
+    try {
+        const isPinned = await WindowManager.ToggleAlwaysOnTop();
+        const pinBtn = document.getElementById('pin-btn');
+
+        if (isPinned) {
+            pinBtn.classList.add('active');
+            showFeedback('📌 Window pinned');
+        } else {
+            pinBtn.classList.remove('active');
+            showFeedback('📌 Window unpinned');
+        }
+    } catch {
+        showFeedback('✗ Failed to toggle pin');
+    }
+};
 
 // -----------------------------------------------------------------------------
 // Initialize

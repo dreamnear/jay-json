@@ -7,13 +7,20 @@ import (
 
 type JSONService struct{}
 
-// FormatJSON prettifies JSON with 2-space indentation while preserving large numbers
-// preserveOrder: currently ignored due to Go's map limitations - both modes produce the same output
-func (j *JSONService) FormatJSON(input string, preserveOrder bool) (string, error) {
+// decodeJSON parses JSON input while preserving large numbers via UseNumber
+func (j *JSONService) decodeJSON(input string) (interface{}, error) {
 	var obj interface{}
 	decoder := json.NewDecoder(strings.NewReader(input))
-	decoder.UseNumber() // Preserve large numbers as strings
-	err := decoder.Decode(&obj)
+	decoder.UseNumber()
+	if err := decoder.Decode(&obj); err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+// FormatJSON prettifies JSON with 2-space indentation while preserving large numbers
+func (j *JSONService) FormatJSON(input string, _ bool) (string, error) {
+	obj, err := j.decodeJSON(input)
 	if err != nil {
 		return "", err
 	}
@@ -28,10 +35,7 @@ func (j *JSONService) FormatJSON(input string, preserveOrder bool) (string, erro
 
 // MinifyJSON removes all whitespace from JSON while preserving large numbers
 func (j *JSONService) MinifyJSON(input string) (string, error) {
-	var obj interface{}
-	decoder := json.NewDecoder(strings.NewReader(input))
-	decoder.UseNumber() // Preserve large numbers as strings
-	err := decoder.Decode(&obj)
+	obj, err := j.decodeJSON(input)
 	if err != nil {
 		return "", err
 	}

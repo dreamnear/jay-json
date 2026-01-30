@@ -1,0 +1,278 @@
+:root {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+    "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 400;
+    color-scheme: light dark;
+    color: rgba(255, 255, 255, 0.87);
+    background-color: rgba(27, 38, 54, 1);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+}
+
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 400;
+    src: local(""),
+    url("./Inter-Medium.ttf") format("truetype");
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1b2636 0%, #2d3e52 100%);
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.header h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    background: linear-gradient(to right, #61dafb, #646cff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.subtitle {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1.1em;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    justify-content: center;
+}
+
+.tab-button {
+    padding: 12px 30px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    margin: 0;
+    width: auto;
+    height: auto;
+    line-height: normal;
+}
+
+.tab-button:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.9);
+    transform: translateY(-2px);
+}
+
+.tab-button.active {
+    background: linear-gradient(135deg, #646cff 0%, #61dafb 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(100, 108, 255, 0.3);
+}
+
+/* Tab Content */
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.panel {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 25px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.panel-header {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.panel-header h2 {
+    font-size: 1.8em;
+    margin-bottom: 8px;
+    color: #61dafb;
+}
+
+.panel-header p {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Editor Container */
+.editor-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.editor-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.editor-panel label {
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.95em;
+}
+
+.code-editor {
+    width: 100%;
+    min-height: 400px;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.9);
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.3s ease;
+}
+
+.code-editor:focus {
+    border-color: #646cff;
+}
+
+.code-editor::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* Buttons */
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 1em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 0;
+    width: auto;
+    height: auto;
+    line-height: normal;
+}
+
+.btn.primary {
+    background: linear-gradient(135deg, #646cff 0%, #535bf2 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(100, 108, 255, 0.3);
+}
+
+.btn.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(100, 108, 255, 0.4);
+}
+
+.btn.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn.secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+/* Validator */
+.validator-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.validator-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.result-box {
+    padding: 20px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 1.1em;
+}
+
+.result-box.success {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: #22c55e;
+    color: #22c55e;
+}
+
+.result-box.error {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+/* Footer */
+.footer {
+    margin-top: 30px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.9em;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .editor-container {
+        grid-template-columns: 1fr;
+    }
+
+    .header h1 {
+        font-size: 2em;
+    }
+}

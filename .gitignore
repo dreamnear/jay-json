@@ -1,0 +1,38 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Task output
+.task/
+
+# Frontend
+frontend/dist/
+frontend/node_modules/
+bun.lockb
+
+# Build artifacts
+*.test
+*.out
+go.work
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Wails build
+build/linux/appimage/build
+build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
+
+# Logs
+*.log

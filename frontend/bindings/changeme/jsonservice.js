@@ -8,11 +8,13 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 
 /**
  * FormatJSON prettifies JSON with 2-space indentation while preserving large numbers
+ * preserveOrder: currently ignored due to Go's map limitations - both modes produce the same output
  * @param {string} input
+ * @param {boolean} preserveOrder
  * @returns {$CancellablePromise<string>}
  */
-export function FormatJSON(input) {
-    return $Call.ByID(99097422, input);
+export function FormatJSON(input, preserveOrder) {
+    return $Call.ByID(99097422, input, preserveOrder);
 }
 
 /**

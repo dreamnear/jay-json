@@ -8,79 +8,61 @@
     <title>JSON Tools</title>
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <h1>🛠️ JSON Tools</h1>
-        <p class="subtitle">Format, Minify, and Validate JSON</p>
+<div class="app-container">
+    <!-- Top Toolbar -->
+    <div class="toolbar">
     </div>
 
-    <div class="tabs">
-        <button class="tab-button active" data-tab="formatter">Formatter</button>
-        <button class="tab-button" data-tab="minifier">Minifier</button>
-        <button class="tab-button" data-tab="validator">Validator</button>
-    </div>
-
-    <div class="tab-content active" id="formatter">
-        <div class="panel">
+    <!-- Main Content: Two-Panel Layout -->
+    <div class="main-content">
+        <!-- Left Panel: Editor -->
+        <div class="panel editor-panel">
             <div class="panel-header">
-                <h2>JSON Formatter</h2>
-                <p>Pretty print your JSON with proper indentation</p>
-            </div>
-            <div class="editor-container">
-                <div class="editor-panel">
-                    <label>Input JSON</label>
-                    <textarea id="format-input" class="code-editor" placeholder="Paste your JSON here..."></textarea>
-                    <button class="btn primary" onclick="formatJSON()">Format</button>
+                <span class="panel-title">Editor</span>
+                <div class="panel-actions">
+                    <button class="action-btn" onclick="formatJSON()" title="Format (⌘↵)">
+                        ✨ Format
+                    </button>
+                    <button class="action-btn" onclick="clearEditor()" title="Clear (⌘⇧K)">
+                        🗑️ Clear
+                    </button>
                 </div>
-                <div class="editor-panel">
-                    <label>Output</label>
-                    <textarea id="format-output" class="code-editor" readonly placeholder="Formatted JSON will appear here..."></textarea>
-                    <button class="btn secondary" onclick="copyToClipboard('format-output')">Copy</button>
+            </div>
+            <textarea
+                id="json-editor"
+                class="json-input"
+                placeholder="Paste JSON here…"
+                spellcheck="false"
+            ></textarea>
+        </div>
+
+        <!-- Right Panel: Preview -->
+        <div class="panel preview-panel">
+            <div class="panel-header">
+                <span class="panel-title">Preview</span>
+                <div class="panel-actions">
+                    <button class="action-btn" onclick="copyOutput()" title="Copy Preview (⌘C)">
+                        📋 Copy
+                    </button>
+                    <button class="action-btn" onclick="copyAsMinified()" title="Copy Minified">
+                        🗜️ Copy Minify
+                    </button>
+                </div>
+            </div>
+            <div id="output-display" class="json-preview">
+                <div class="preview-placeholder">
+                    Auto-formatting preview...
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="tab-content" id="minifier">
-        <div class="panel">
-            <div class="panel-header">
-                <h2>JSON Minifier</h2>
-                <p>Remove all whitespace to compress your JSON</p>
-            </div>
-            <div class="editor-container">
-                <div class="editor-panel">
-                    <label>Input JSON</label>
-                    <textarea id="minify-input" class="code-editor" placeholder="Paste your JSON here..."></textarea>
-                    <button class="btn primary" onclick="minifyJSON()">Minify</button>
-                </div>
-                <div class="editor-panel">
-                    <label>Output</label>
-                    <textarea id="minify-output" class="code-editor" readonly placeholder="Minified JSON will appear here..."></textarea>
-                    <button class="btn secondary" onclick="copyToClipboard('minify-output')">Copy</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="tab-content" id="validator">
-        <div class="panel">
-            <div class="panel-header">
-                <h2>JSON Validator</h2>
-                <p>Check if your JSON is valid</p>
-            </div>
-            <div class="validator-container">
-                <textarea id="validate-input" class="code-editor" placeholder="Paste your JSON here..."></textarea>
-                <div class="validator-actions">
-                    <button class="btn primary" onclick="validateJSON()">Validate</button>
-                    <button class="btn secondary" onclick="clearValidator()">Clear</button>
-                </div>
-                <div id="validate-result" class="result-box"></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="footer">
-        <p>Built with Wails v3</p>
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <span class="status-item">Ready</span>
+        <span id="validation-status" class="status-badge"></span>
+        <span class="char-count" id="char-count">0 chars</span>
+        <span class="status-item">JSON Tools v1.0</span>
     </div>
 </div>
 <script type="module" src="/src/main.js"></script>

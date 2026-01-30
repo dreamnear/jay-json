@@ -8,7 +8,8 @@ import (
 type JSONService struct{}
 
 // FormatJSON prettifies JSON with 2-space indentation while preserving large numbers
-func (j *JSONService) FormatJSON(input string) (string, error) {
+// preserveOrder: currently ignored due to Go's map limitations - both modes produce the same output
+func (j *JSONService) FormatJSON(input string, preserveOrder bool) (string, error) {
 	var obj interface{}
 	decoder := json.NewDecoder(strings.NewReader(input))
 	decoder.UseNumber() // Preserve large numbers as strings

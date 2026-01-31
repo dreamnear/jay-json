@@ -1,59 +1,160 @@
-# Welcome to Your New Wails3 Project!
+# JSON Tools
 
-Congratulations on generating your Wails3 application! This README will guide you through the next steps to get your project up and running.
+A desktop application for working with JSON data, built with [Wails](https://wails.io/).
 
-## Getting Started
+## Features
 
-1. Navigate to your project directory in the terminal.
+- **Editor Panel**
+  - Line numbers for easy reference
+  - Syntax highlighting when formatted
+  - Real-time validation
 
-2. To run your application in development mode, use the following command:
+- **Tree View**
+  - Interactive collapsible nodes
+  - Type badges for each value
+  - Visual structure representation
 
-   ```
-   wails3 dev
-   ```
+- **Operations**
+  - Format JSON with 2-space indentation
+  - Minify JSON to remove whitespace
+  - Validate JSON and display errors
+  - Copy formatted or minified JSON to clipboard
 
-   This will start your application and enable hot-reloading for both frontend and backend changes.
+- **Checkpoint System**
+  - Undo/Redo support for formatting operations
+  - Up to 50 checkpoints saved in history
 
-3. To build your application for production, use:
+## Screenshots
 
-   ```
-   wails3 build
-   ```
+```
+┌─────────────────────────────────────────────────┐
+│  JSON Tools                               ➕ 📌  │
+├──────────────────────┬────────────────────────┤
+│  Editor              │  Tree View              │
+│  [Format] [Undo]      │  [Copy] [Copy Minify]    │
+│  [Redo] [Clear]       │                         │
+├──────────────────────┼────────────────────────┤
+│  1  {                 │  ▼ root                 │
+│  2    "users": [      │    ▶ users (Array[2])   │
+│  3      {            │    ▶ 0 (Object)          │
+│  4        "name":    │      • name: "John"     │
+│  5        "age": 30  │      • age: 30          │
+│  6      }            │    ▶ 1 (Object)          │
+│  7    ]               │      • name: "Jane"     │
+│  8  }                 │      • age: 25          │
+└──────────────────────┴────────────────────────┘
+```
 
-   This will create a production-ready executable in the `build` directory.
+## Installation
 
-## Exploring Wails3 Features
+### Prerequisites
 
-Now that you have your project set up, it's time to explore the features that Wails3 offers:
+- Go 1.21 or later
+- Node.js 18 or later
+- Wails CLI
 
-1. **Check out the examples**: The best way to learn is by example. Visit the `examples` directory in the `v3/examples` directory to see various sample applications.
+### Build from Source
 
-2. **Run an example**: To run any of the examples, navigate to the example's directory and use:
+```bash
+# Clone the repository
+git clone https://github.com/JessonChan/json-tools.git
+cd json-tools
 
-   ```
-   go run .
-   ```
+# Install dependencies
+cd frontend && npm install && cd ..
 
-   Note: Some examples may be under development during the alpha phase.
+# Run in development mode
+wails3 dev
 
-3. **Explore the documentation**: Visit the [Wails3 documentation](https://v3.wails.io/) for in-depth guides and API references.
+# Build for production
+wails3 build
+```
 
-4. **Join the community**: Have questions or want to share your progress? Join the [Wails Discord](https://discord.gg/JDdSxwjhGf) or visit the [Wails discussions on GitHub](https://github.com/wailsapp/wails/discussions).
+The built executable will be in the `build` directory.
 
-## Project Structure
+## Usage
 
-Take a moment to familiarize yourself with your project structure:
+1. **Paste or type JSON** into the editor panel
+2. **Click Format** (or press `⌘Enter` / `Ctrl+Enter`) to format the JSON
+3. **View the tree structure** in the right panel
+4. **Click nodes** in the tree to expand or collapse them
+5. **Copy** the formatted or minified JSON using the buttons
 
-- `frontend/`: Contains your frontend code (HTML, CSS, JavaScript/TypeScript)
-- `main.go`: The entry point of your Go backend
-- `app.go`: Define your application structure and methods here
-- `wails.json`: Configuration file for your Wails project
+### Keyboard Shortcuts
 
-## Next Steps
+| Action | macOS | Windows/Linux |
+|--------|-------|---------------|
+| Format | `⌘Enter` | `Ctrl+Enter` |
+| Undo | `⌘Z` | `Ctrl+Z` |
+| Redo | `⌘⇧Z` | `Ctrl+Y` |
+| Clear | `⌘⇧K` | `Ctrl+Shift+K` |
+| Copy | `⌘C` (in editor) | `Ctrl+C` |
+| New Window | `⌘N` | `Ctrl+N` |
+| Toggle Pin | `⌘P` | `Ctrl+P` |
 
-1. Modify the frontend in the `frontend/` directory to create your desired UI.
-2. Add backend functionality in `main.go`.
-3. Use `wails3 dev` to see your changes in real-time.
-4. When ready, build your application with `wails3 build`.
+## Development
 
-Happy coding with Wails3! If you encounter any issues or have questions, don't hesitate to consult the documentation or reach out to the Wails community.
+This project is built with:
+
+- **Backend**: [Go](https://go.dev/) with [Wails v3](https://v3.wails.io/)
+- **Frontend**: Vanilla JavaScript with HTML5 and CSS3
+- **Fonts**: [Inter](https://rsms.me/inter/) and [IBM Plex Mono](https://www.ibm.com/plex/)
+- **Icons**: [Heroicons](https://heroicons.com/)
+
+### Project Structure
+
+```
+json-tools/
+├── frontend/
+│   ├── public/          # Static assets (CSS, images)
+│   ├── src/             # JavaScript source code
+│   ├── dist/            # Built frontend files
+│   └── package.json     # Frontend dependencies
+├── build/               # Built application executables
+├── jsonservice.go       # JSON processing service
+├── windowmanager.go     # Window management
+├── main.go              # Application entry point
+└── go.mod               # Go dependencies
+```
+
+## Acknowledgments
+
+This project would not be possible without the following open-source projects:
+
+- [Wails](https://wails.io/) - Framework for building desktop applications with Go
+- [Inter Font](https://rsms.me/inter/) - Variable font family by Rasmus Andersson
+- [IBM Plex Mono](https://www.ibm.com/plex/) - Monospaced font by IBM
+- [Heroicons](https://heroicons.com/) - Icon set by the Tailwind CSS team
+
+Special thanks to the Wails community for documentation and examples that made this project possible.
+
+## Contributing
+
+Contributions are welcome. Please feel free to:
+
+- Report bugs
+- Suggest new features
+- Submit pull requests
+- Improve documentation
+
+To contribute:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is released under the MIT License.
+
+## Support
+
+If you encounter any issues:
+
+- Check existing [GitHub Issues](https://github.com/JessonChan/json-tools/issues)
+- Open a new issue with details about the problem
+---
+
+Made with Wails v3

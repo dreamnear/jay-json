@@ -14,6 +14,9 @@ var windowManager *WindowManager
 //go:embed all:frontend/dist
 var assets embed.FS
 
+//go:embed build/appicon.png
+var appIcon []byte
+
 func main() {
 	// Create window manager instance
 	windowManager = &WindowManager{}
@@ -26,6 +29,7 @@ func main() {
 	app = application.New(application.Options{
 		Name:        "json_tools",
 		Description: "A JSON tools application",
+		Icon:        appIcon,
 		Services: []application.Service{
 			application.NewService(&JSONService{}),
 			application.NewService(windowManager),

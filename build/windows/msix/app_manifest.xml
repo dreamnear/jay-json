@@ -7,16 +7,16 @@
   xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   IgnorableNamespaces="uap3">
   
-  <Identity 
-    Name="com.example.jsontools"
-    Publisher="CN=My Company"
-    Version="0.1.0.0" 
+  <Identity
+    Name="com.jessonchan.jayjson"
+    Publisher="CN=Jesson Chan"
+    Version="1.0.0.0"
     ProcessorArchitecture="x64" />
   
   <Properties>
-    <DisplayName>My Product</DisplayName>
-    <PublisherDisplayName>My Company</PublisherDisplayName>
-    <Description>A json_tools application</Description>
+    <DisplayName>Jay JSON</DisplayName>
+    <PublisherDisplayName>Jesson Chan</PublisherDisplayName>
+    <Description>Professional JSON tools for developers</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
   
@@ -29,10 +29,10 @@
   </Resources>
   
   <Applications>
-    <Application Id="com.example.jsontools" Executable="json_tools" EntryPoint="Windows.FullTrustApplication">
+    <Application Id="com.jessonchan.jayjson" Executable="jay_json" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-        DisplayName="My Product"
-        Description="A json_tools application"
+        DisplayName="Jay JSON"
+        Description="Professional JSON tools for developers"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
@@ -41,7 +41,7 @@
       </uap:VisualElements>
       
       <Extensions>
-        <desktop:Extension Category="windows.fullTrustProcess" Executable="json_tools" />
+        <desktop:Extension Category="windows.fullTrustProcess" Executable="jay_json" />
         
         
       </Extensions>

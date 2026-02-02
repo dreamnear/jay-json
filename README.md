@@ -1,4 +1,4 @@
-# JSON Tools
+# Jay JSON
 
 A desktop application for working with JSON data, built with [Wails](https://wails.io/).
 
@@ -28,7 +28,7 @@ A desktop application for working with JSON data, built with [Wails](https://wai
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  JSON Tools                               ➕ 📌  │
+│  Jay JSON                                  ➕ 📌  │
 ├──────────────────────┬────────────────────────┤
 │  Editor              │  Tree View              │
 │  [Format] [Undo]      │  [Copy] [Copy Minify]    │

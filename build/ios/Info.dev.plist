@@ -3,19 +3,19 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>json_tools</string>
+    <string>jay_json</string>
     <key>CFBundleIdentifier</key>
-    <string>com.example.jsontools.dev</string>
+    <string>com.jessonchan.jayjson.dev</string>
     <key>CFBundleName</key>
-    <string>My Product (Dev)</string>
+    <string>Jay JSON (Dev)</string>
     <key>CFBundleDisplayName</key>
-    <string>My Product (Dev)</string>
+    <string>Jay JSON (Dev)</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0-dev</string>
+    <string>1.0.0-dev</string>
     <key>CFBundleVersion</key>
-    <string>0.1.0</string>
+    <string>1.0.0</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>MinimumOSVersion</key>
@@ -52,11 +52,11 @@
     <true/>
     
     <key>NSHumanReadableCopyright</key>
-    <string>© 2026, My Company</string>
+    <string>© 2025, Jesson Chan</string>
     
     
     <key>CFBundleGetInfoString</key>
-    <string>This is a comment</string>
+    <string>Professional JSON tools for developers</string>
     
 </dict>
 </plist>

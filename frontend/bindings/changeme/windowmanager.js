@@ -15,7 +15,7 @@ export function IsAlwaysOnTop() {
 }
 
 /**
- * OpenNewWindow creates a new window instance
+ * OpenNewWindow creates a new window instance with the same size as current window
  * @returns {$CancellablePromise<void>}
  */
 export function OpenNewWindow() {
@@ -23,7 +23,7 @@ export function OpenNewWindow() {
 }
 
 /**
- * ToggleAlwaysOnTop toggles the always-on-top state of the main window
+ * ToggleAlwaysOnTop toggles the always-on-top state of all windows
  * @returns {$CancellablePromise<boolean>}
  */
 export function ToggleAlwaysOnTop() {

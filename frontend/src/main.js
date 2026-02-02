@@ -33,6 +33,347 @@ const charCount = document.getElementById('char-count');
 const statusItem = document.querySelector('.status-item:first-child');
 const undoBtn = document.getElementById('undo-btn');
 const redoBtn = document.getElementById('redo-btn');
+const tabsContainer = document.getElementById('tabs-container');
+
+// =============================================================================
+// Tab State
+// =============================================================================
+
+let tabs = [];
+let activeTabId = null;
+
+// Panel collapse state
+let collapsedPanels = {
+    editor: false,
+    preview: false
+};
+
+// =============================================================================
+// Panel Management
+// =============================================================================
+
+function togglePanel(panelType) {
+    const panel = document.getElementById(`${panelType}-panel`);
+    if (!panel) return;
+
+    collapsedPanels[panelType] = !collapsedPanels[panelType];
+
+    if (collapsedPanels[panelType]) {
+        panel.classList.add('collapsed');
+    } else {
+        panel.classList.remove('collapsed');
+    }
+
+    // Update collapse button aria-expanded attribute
+    const collapseBtn = panel.querySelector('.collapse-btn');
+    if (collapseBtn) {
+        collapseBtn.setAttribute('aria-expanded', !collapsedPanels[panelType]);
+    }
+
+    // Save to storage
+    saveTabsToStorage();
+}
+
+// =============================================================================
+// Tab Management
+// =============================================================================
+
+function generateTabId() {
+    return `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+function createTab(filename = 'Untitled', content = '') {
+    const tab = {
+        id: generateTabId(),
+        filename: filename,
+        content: content,
+        checkpoints: [],
+        checkpointIndex: -1,
+        isModified: false,
+        lastFormatted: '',
+        lastMinified: ''
+    };
+    return tab;
+}
+
+function newTab() {
+    const tab = createTab('Untitled', '');
+    tabs.push(tab);
+    setActiveTab(tab.id);
+    renderTabs();
+    editor.focus();
+}
+
+function closeTab(tabId) {
+    const index = tabs.findIndex(t => t.id === tabId);
+    if (index === -1) return;
+
+    tabs.splice(index, 1);
+
+    // If closing active tab, switch to another
+    if (tabId === activeTabId) {
+        if (tabs.length > 0) {
+            // Switch to the tab to the right, or the last tab
+            const newIndex = Math.min(index, tabs.length - 1);
+            setActiveTab(tabs[newIndex].id);
+        } else {
+            // No tabs left, create a new one
+            newTab();
+        }
+    }
+
+    renderTabs();
+}
+
+function setActiveTab(tabId) {
+    activeTabId = tabId;
+    const tab = tabs.find(t => t.id === tabId);
+    if (!tab) return;
+
+    // Save current state before switching
+    if (editor.value) {
+        saveCurrentTabState();
+    }
+
+    // Load tab content
+    editor.value = tab.content;
+    checkpoints = tab.checkpoints;
+    currentCheckpointIndex = tab.checkpointIndex;
+
+    // Update UI
+    applyHighlightingIfNeeded(tab.content);
+    updateLineNumbers();
+    updateStats();
+
+    // Update tree view if content exists
+    if (tab.content.trim()) {
+        try {
+            const parsed = JSON.parse(tab.content);
+            outputDisplay.innerHTML = renderTreeView(parsed, 'root');
+        } catch {
+            outputDisplay.innerHTML = EMPTY_PLACEHOLDER;
+        }
+    } else {
+        outputDisplay.innerHTML = EMPTY_PLACEHOLDER;
+    }
+
+    renderTabs();
+}
+
+function saveCurrentTabState() {
+    const tab = tabs.find(t => t.id === activeTabId);
+    if (!tab) return;
+
+    tab.content = editor.value;
+    tab.checkpoints = checkpoints;
+    tab.checkpointIndex = currentCheckpointIndex;
+}
+
+function updateTabModified(isModified) {
+    const tab = tabs.find(t => t.id === activeTabId);
+    if (!tab) return;
+
+    tab.isModified = isModified;
+    renderTabs();
+}
+
+function renderTabs() {
+    tabsContainer.innerHTML = '';
+
+    tabs.forEach((tab, index) => {
+        const tabEl = document.createElement('div');
+        tabEl.className = `tab ${tab.id === activeTabId ? 'active' : ''} ${tab.isModified ? 'modified' : ''}`;
+        tabEl.onclick = () => setActiveTab(tab.id);
+        tabEl.setAttribute('role', 'tab');
+        tabEl.setAttribute('aria-selected', tab.id === activeTabId);
+        tabEl.setAttribute('aria-label', `${tab.filename}${tab.isModified ? ' (modified)' : ''}`);
+        tabEl.setAttribute('tabindex', '0');
+        tabEl.dataset.tabId = tab.id;
+
+        tabEl.innerHTML = `
+            <span class="tab-name">${escapeHtml(tab.filename)}</span>
+            <button class="tab-close" onclick="event.stopPropagation(); closeTab('${tab.id}')" aria-label="Close ${tab.filename}" tabindex="0">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        `;
+
+        tabsContainer.appendChild(tabEl);
+    });
+
+    // Save to localStorage whenever tabs change
+    saveTabsToStorage();
+}
+
+// =============================================================================
+// Tab Persistence
+// =============================================================================
+
+const STORAGE_KEY = 'jsonToolsTabs';
+
+function saveTabsToStorage() {
+    try {
+        const tabsData = {
+            tabs: tabs.map(tab => ({
+                id: tab.id,
+                filename: tab.filename,
+                content: tab.content,
+                checkpoints: tab.checkpoints,
+                checkpointIndex: tab.checkpointIndex,
+                isModified: tab.isModified
+            })),
+            activeTabId: activeTabId,
+            collapsedPanels: collapsedPanels
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tabsData));
+    } catch (e) {
+        console.error('Failed to save tabs to storage:', e);
+    }
+}
+
+function loadTabsFromStorage() {
+    try {
+        const tabsDataStr = localStorage.getItem(STORAGE_KEY);
+        if (!tabsDataStr) return false;
+
+        const tabsData = JSON.parse(tabsDataStr);
+        if (!tabsData.tabs || !Array.isArray(tabsData.tabs) || tabsData.tabs.length === 0) {
+            return false;
+        }
+
+        // Restore panels
+        if (tabsData.collapsedPanels) {
+            collapsedPanels = tabsData.collapsedPanels;
+        }
+
+        // Apply collapsed state
+        const editorPanel = document.getElementById('editor-panel');
+        const previewPanel = document.getElementById('preview-panel');
+
+        if (collapsedPanels.editor && editorPanel) {
+            editorPanel.classList.add('collapsed');
+        }
+        if (collapsedPanels.preview && previewPanel) {
+            previewPanel.classList.add('collapsed');
+        }
+
+        // Restore tabs
+        tabs = tabsData.tabs.map(tabData => ({
+            ...tabData,
+            lastFormatted: '',
+            lastMinified: ''
+        }));
+
+        // Set active tab
+        activeTabId = tabsData.activeTabId || tabs[0].id;
+
+        // Verify active tab exists
+        if (!tabs.find(t => t.id === activeTabId)) {
+            activeTabId = tabs[0].id;
+        }
+
+        // Load the active tab content
+        const tab = tabs.find(t => t.id === activeTabId);
+        if (tab) {
+            editor.value = tab.content;
+            checkpoints = tab.checkpoints;
+            currentCheckpointIndex = tab.checkpointIndex;
+
+            applyHighlightingIfNeeded(tab.content);
+            updateLineNumbers();
+            updateStats();
+
+            if (tab.content.trim()) {
+                try {
+                    const parsed = JSON.parse(tab.content);
+                    outputDisplay.innerHTML = renderTreeView(parsed, 'root');
+                } catch {
+                    outputDisplay.innerHTML = EMPTY_PLACEHOLDER;
+                }
+            }
+        }
+
+        renderTabs();
+        return true;
+    } catch (e) {
+        console.error('Failed to load tabs from storage:', e);
+        return false;
+    }
+}
+
+// Open current tab in a new window
+async function openInWindow() {
+    const tab = tabs.find(t => t.id === activeTabId);
+    if (!tab) return;
+
+    // Save current state first
+    saveCurrentTabState();
+
+    // Store tab data in localStorage for the new window to retrieve
+    const pendingData = {
+        filename: tab.filename,
+        content: tab.content,
+        checkpoints: tab.checkpoints,
+        checkpointIndex: tab.checkpointIndex
+    };
+    localStorage.setItem('pendingTabData', JSON.stringify(pendingData));
+
+    // Open new window
+    try {
+        await WindowManager.OpenNewWindow();
+        showFeedback('✓ Opened in new window');
+    } catch {
+        showFeedback('✗ Failed to open window');
+    }
+
+    // Clear the pending data after a short delay
+    setTimeout(() => {
+        localStorage.removeItem('pendingTabData');
+    }, 5000);
+}
+
+// Check if this window was opened with pending tab data
+function loadPendingTabData() {
+    const pendingDataStr = localStorage.getItem('pendingTabData');
+    if (!pendingDataStr) return false;
+
+    try {
+        const pendingData = JSON.parse(pendingDataStr);
+        const tab = createTab(pendingData.filename, pendingData.content);
+        tab.checkpoints = pendingData.checkpoints || [];
+        tab.checkpointIndex = pendingData.checkpointIndex || -1;
+
+        tabs = [tab];
+        activeTabId = tab.id;
+
+        editor.value = tab.content;
+        checkpoints = tab.checkpoints;
+        currentCheckpointIndex = tab.checkpointIndex;
+
+        applyHighlightingIfNeeded(tab.content);
+        updateLineNumbers();
+        updateStats();
+
+        if (tab.content.trim()) {
+            try {
+                const parsed = JSON.parse(tab.content);
+                outputDisplay.innerHTML = renderTreeView(parsed, 'root');
+            } catch {
+                outputDisplay.innerHTML = EMPTY_PLACEHOLDER;
+            }
+        }
+
+        renderTabs();
+        localStorage.removeItem('pendingTabData');
+
+        return true;
+    } catch (e) {
+        console.error('Failed to load pending tab data:', e);
+        localStorage.removeItem('pendingTabData');
+        return false;
+    }
+}
 
 // =============================================================================
 // Utility Functions
@@ -303,6 +644,9 @@ async function formatJSON() {
         // Format in-place in editor
         editor.value = formatted;
 
+        // Save to tab state
+        saveCurrentTabState();
+
         // Apply highlighting and update UI
         applyHighlightingIfNeeded(formatted);
         updateLineNumbers();
@@ -410,6 +754,9 @@ function clearEditor() {
         currentCheckpointIndex = -1;
         updateUndoRedoButtons();
 
+        // Update tab state
+        saveCurrentTabState();
+
         // Fade in
         editor.style.transition = 'opacity 0.2s ease';
         outputDisplay.style.transition = 'opacity 0.2s ease';
@@ -439,6 +786,9 @@ function saveCheckpoint(content) {
         checkpoints.shift();
         currentCheckpointIndex--;
     }
+
+    // Save to tab state
+    saveCurrentTabState();
 
     updateUndoRedoButtons();
 }
@@ -499,6 +849,9 @@ editor.addEventListener('input', () => {
         editorHighlighted.innerHTML = '';
     }
 
+    // Mark current tab as modified
+    updateTabModified(true);
+
     updateStats();
     autoValidate();
 });
@@ -512,6 +865,18 @@ document.addEventListener('keydown', (e) => {
         case 'Enter':
             e.preventDefault();
             formatJSON();
+            break;
+        case 't':
+        case 'T':
+            e.preventDefault();
+            newTab();
+            break;
+        case 'w':
+        case 'W':
+            e.preventDefault();
+            if (activeTabId) {
+                closeTab(activeTabId);
+            }
             break;
         case 'z':
         case 'Z':
@@ -549,6 +914,71 @@ document.addEventListener('keydown', (e) => {
                 clearEditor();
             }
             break;
+        case 'Tab':
+            e.preventDefault();
+            // Switch to next tab
+            const currentIndex = tabs.findIndex(t => t.id === activeTabId);
+            if (currentIndex >= 0 && tabs.length > 1) {
+                const nextIndex = (currentIndex + 1) % tabs.length;
+                setActiveTab(tabs[nextIndex].id);
+            }
+            break;
+        case 'o':
+        case 'O':
+            if (e.shiftKey) {
+                e.preventDefault();
+                openInWindow();
+            }
+            break;
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+            // Switch to tab by number
+            const tabIndex = parseInt(e.key) - 1;
+            if (tabIndex >= 0 && tabIndex < tabs.length) {
+                e.preventDefault();
+                setActiveTab(tabs[tabIndex].id);
+            }
+            break;
+        case '[':
+            if (e.shiftKey) {
+                e.preventDefault();
+                togglePanel('editor'); // Collapse/expand editor
+            }
+            break;
+        case ']':
+            if (e.shiftKey) {
+                e.preventDefault();
+                togglePanel('preview'); // Collapse/expand tree view
+            }
+            break;
+    }
+});
+
+// Handle arrow key navigation for tabs
+document.addEventListener('keydown', (e) => {
+    // Only handle arrow keys when not in editor
+    if (document.activeElement === editor) return;
+
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const currentIndex = tabs.findIndex(t => t.id === activeTabId);
+        if (currentIndex === -1) return;
+
+        let newIndex;
+        if (e.key === 'ArrowLeft') {
+            newIndex = currentIndex > 0 ? currentIndex - 1 : tabs.length - 1;
+        } else {
+            newIndex = (currentIndex + 1) % tabs.length;
+        }
+
+        e.preventDefault();
+        setActiveTab(tabs[newIndex].id);
     }
 });
 
@@ -564,6 +994,11 @@ window.copyOutput = copyOutput;
 window.clearEditor = clearEditor;
 window.undoCheckpoint = undoCheckpoint;
 window.redoCheckpoint = redoCheckpoint;
+window.newTab = newTab;
+window.closeTab = closeTab;
+window.setActiveTab = setActiveTab;
+window.openInWindow = openInWindow;
+window.togglePanel = togglePanel;
 
 // =============================================================================
 // Window Management
@@ -598,6 +1033,25 @@ window.toggleAlwaysOnTop = async () => {
 // =============================================================================
 // Initialization
 // =============================================================================
+
+// Priority order for loading tabs:
+// 1. Pending data from "Open in Window" feature
+// 2. Saved tabs from localStorage (previous session)
+// 3. Default new tab
+
+const hasPendingData = loadPendingTabData();
+
+if (!hasPendingData) {
+    const hasSavedTabs = loadTabsFromStorage();
+
+    // If no saved tabs, create a default tab
+    if (!hasSavedTabs) {
+        const defaultTab = createTab('Untitled', '');
+        tabs.push(defaultTab);
+        activeTabId = defaultTab.id;
+        renderTabs();
+    }
+}
 
 updateStats();
 updateLineNumbers();

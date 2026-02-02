@@ -19,7 +19,9 @@ var appIcon []byte
 
 func main() {
 	// Create window manager instance
-	windowManager = &WindowManager{}
+	windowManager = &WindowManager{
+		windows: make(map[string]*application.WebviewWindow),
+	}
 
 	// Create a new Wails application by providing the necessary options.
 	// Variables 'Name' and 'Description' are for application metadata.
@@ -27,7 +29,7 @@ func main() {
 	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
 	// 'Mac' options tailor the application when running an macOS.
 	app = application.New(application.Options{
-		Name:        "json_tools",
+		Name:        "jay_json",
 		Description: "A JSON tools application",
 		Icon:        appIcon,
 		Services: []application.Service{
@@ -47,7 +49,7 @@ func main() {
 
 	// Create the main window
 	mainWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "🛠️ JSON Tools",
+		Title: "🛠️ Jay JSON",
 		Mac: application.MacWindow{
 			Backdrop: application.MacBackdropLiquidGlass,
 			TitleBar: application.MacTitleBarHidden,

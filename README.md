@@ -57,8 +57,8 @@ A desktop application for working with JSON data, built with [Wails](https://wai
 
 ```bash
 # Clone the repository
-git clone https://github.com/JessonChan/json-tools.git
-cd json-tools
+git clone https://github.com/JessonChan/jay-json.git
+cd jay-json
 
 # Install dependencies
 cd frontend && npm install && cd ..
@@ -104,7 +104,7 @@ This project is built with:
 ### Project Structure
 
 ```
-json-tools/
+jay-json/
 ├── frontend/
 │   ├── public/          # Static assets (CSS, images)
 │   ├── src/             # JavaScript source code
@@ -153,7 +153,7 @@ This project is released under the MIT License.
 
 If you encounter any issues:
 
-- Check existing [GitHub Issues](https://github.com/JessonChan/json-tools/issues)
+- Check existing [GitHub Issues](https://github.com/JessonChan/jay-json/issues)
 - Open a new issue with details about the problem
 ---
 

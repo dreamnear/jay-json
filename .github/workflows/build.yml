@@ -1,0 +1,116 @@
+name: Build
+
+on:
+  push:
+    branches: [ master, main ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: darwin
+            arch: amd64
+            suffix: ''
+          - os: macos-latest
+            platform: darwin
+            arch: arm64
+            suffix: '-arm64'
+          - os: windows-latest
+            platform: windows
+            arch: amd64
+            suffix: ''
+          - os: ubuntu-latest
+            platform: linux
+            arch: amd64
+            suffix: ''
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build
+        run: wails3 build -platform ${{ matrix.platform }}/${{ matrix.arch }}
+
+      - name: List build outputs
+        shell: bash
+        run: ls -la build/
+
+      - name: Upload macOS artifact
+        if: matrix.platform == 'darwin'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jay-json-macos${{ matrix.suffix }}
+          path: |
+            build/darwin/*.app
+            build/darwin/*.tar.gz
+
+      - name: Upload Windows artifact
+        if: matrix.platform == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jay-json-windows
+          path: |
+            build/windows/*.exe
+            build/windows/*.msi
+            build/windows/*.zip
+
+      - name: Upload Linux artifact
+        if: matrix.platform == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jay-json-linux
+          path: |
+            build/linux/*
+            build/linux/*.tar.gz
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" --generate-notes \
+            artifacts/jay-json-*/* || true

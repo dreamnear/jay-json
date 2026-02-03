@@ -96,7 +96,6 @@ const ThemeManager = {
         if (iconEl) {
             iconEl.innerHTML = theme.svg;
         }
-        btn.querySelector('.theme-name').textContent = theme.name;
 
         // Update menu options
         menu.querySelectorAll('.theme-option').forEach(option => {

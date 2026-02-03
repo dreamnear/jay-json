@@ -51,8 +51,8 @@ func main() {
 	mainWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "🛠️ Jay JSON",
 		Mac: application.MacWindow{
-			Backdrop: application.MacBackdropLiquidGlass,
 			TitleBar: application.MacTitleBarHidden,
+			// Backdrop removed - causes window jump on theme change
 		},
 		BackgroundColour: application.NewRGB(27, 38, 54),
 		URL:              "/",

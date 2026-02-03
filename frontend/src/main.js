@@ -2,6 +2,152 @@ import { JSONService } from "../bindings/changeme";
 import { WindowManager } from "../bindings/changeme";
 
 // =============================================================================
+// Theme Manager
+// =============================================================================
+
+const ThemeManager = {
+    current: 'system', // 'system' | 'light' | 'dark'
+    storageKey: 'jay-theme',
+
+    // Theme configuration with SVG icons
+    themes: {
+        system: {
+            name: 'System',
+            svg: '<path d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />'
+        },
+        light: {
+            name: 'Light',
+            svg: '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>'
+        },
+        dark: {
+            name: 'Dark',
+            svg: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>'
+        }
+    },
+
+    init() {
+        // Load saved theme preference
+        const saved = localStorage.getItem(this.storageKey);
+        if (saved && ['system', 'light', 'dark'].includes(saved)) {
+            this.current = saved;
+        }
+
+        // Apply initial theme
+        this.applyTheme();
+
+        // Listen for system theme changes when in system mode
+        this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        this.mediaQuery.addEventListener('change', () => {
+            if (this.current === 'system') {
+                this.applyTheme();
+            }
+        });
+
+        // Listen for theme changes from other windows
+        window.addEventListener('storage', (e) => {
+            if (e.key === this.storageKey && e.newValue) {
+                this.current = e.newValue;
+                this.applyTheme();
+                this.updateUI();
+            }
+        });
+
+        // Setup UI
+        this.setupUI();
+    },
+
+    setTheme(theme) {
+        if (!['system', 'light', 'dark'].includes(theme)) return;
+
+        this.current = theme;
+        localStorage.setItem(this.storageKey, theme);
+        this.applyTheme();
+        this.updateUI();
+    },
+
+    applyTheme() {
+        const root = document.documentElement;
+
+        // Only use data-theme attribute, avoid classList changes that trigger redraws
+        if (this.current === 'dark') {
+            root.setAttribute('data-theme', 'dark');
+        } else if (this.current === 'light') {
+            root.setAttribute('data-theme', 'light');
+        } else {
+            // System mode - remove attribute to let CSS media query handle it
+            root.removeAttribute('data-theme');
+        }
+    },
+
+    updateUI() {
+        const btn = document.getElementById('themeBtn');
+        const menu = document.getElementById('themeMenu');
+        if (!btn || !menu) return;
+
+        const theme = this.themes[this.current];
+
+        // Update button icon (SVG)
+        const iconEl = btn.querySelector('.theme-icon');
+        if (iconEl) {
+            iconEl.innerHTML = theme.svg;
+        }
+
+        // Update menu options
+        menu.querySelectorAll('.theme-option').forEach(option => {
+            const value = option.dataset.value;
+            const isChecked = value === this.current;
+            option.setAttribute('aria-checked', isChecked);
+        });
+    },
+
+    setupUI() {
+        const btn = document.getElementById('themeBtn');
+        const menu = document.getElementById('themeMenu');
+        if (!btn || !menu) return;
+
+        // Toggle menu on button click
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+            btn.setAttribute('aria-expanded', !isExpanded);
+            menu.classList.toggle('show', !isExpanded);
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', () => {
+            menu.classList.remove('show');
+            btn.setAttribute('aria-expanded', 'false');
+        });
+
+        // Prevent menu from closing when clicking inside
+        menu.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        // Handle option clicks
+        menu.querySelectorAll('.theme-option').forEach(option => {
+            option.addEventListener('click', () => {
+                const value = option.dataset.value;
+                this.setTheme(value);
+                menu.classList.remove('show');
+                btn.setAttribute('aria-expanded', 'false');
+            });
+
+            // Keyboard navigation
+            option.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    option.click();
+                }
+            });
+        });
+
+        // Initial UI update
+        this.updateUI();
+    }
+};
+
+// =============================================================================
 // Constants
 // =============================================================================
 
@@ -1057,6 +1203,9 @@ window.toggleAlwaysOnTop = async () => {
 // =============================================================================
 // Initialization
 // =============================================================================
+
+// Initialize theme manager first
+ThemeManager.init();
 
 // Priority order for loading tabs:
 // 1. Pending data from "Open in Window" feature

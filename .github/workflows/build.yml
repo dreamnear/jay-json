@@ -16,21 +16,11 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            platform: darwin
-            arch: amd64
-            suffix: ''
-          - os: macos-latest
-            platform: darwin
-            arch: arm64
-            suffix: '-arm64'
+            name: macos
           - os: windows-latest
-            platform: windows
-            arch: amd64
-            suffix: ''
+            name: windows
           - os: ubuntu-latest
-            platform: linux
-            arch: amd64
-            suffix: ''
+            name: linux
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -43,7 +33,7 @@ jobs:
           cache: true
 
       - name: Install Linux dependencies
-        if: matrix.platform == 'linux'
+        if: matrix.name == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
@@ -61,51 +51,54 @@ jobs:
         run: bun install
 
       - name: Build
-        run: wails3 build -platform ${{ matrix.platform }}/${{ matrix.arch }}
+        run: wails3 build
 
       - name: Create DMG for macOS
-        if: matrix.platform == 'darwin'
+        if: matrix.name == 'macos'
         run: |
           brew install create-dmg
-          APP_NAME=$(ls build/darwin/*.app | head -1 | xargs basename)
+          APP_NAME=$(ls build/darwin/*.app 2>/dev/null || ls bin/*.app 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo "json_tools.dev.app")
           create-dmg \
             --volname "Jay JSON" \
             --window-pos 200 120 \
             --window-size 600 400 \
             --icon-size 100 \
             --app-drop-link 450 185 \
-            "build/darwin/Jay-JSON${{ matrix.suffix }}.dmg" \
-            "build/darwin/$APP_NAME"
+            "Jay-JSON.dmg" \
+            "$APP_NAME"
 
       - name: List build outputs
         shell: bash
-        run: ls -la build/
+        run: ls -la build/ bin/ 2>/dev/null || ls -la build/ || true
 
       - name: Upload macOS artifact
-        if: matrix.platform == 'darwin'
+        if: matrix.name == 'macos'
         uses: actions/upload-artifact@v4
         with:
-          name: jay-json-macos${{ matrix.suffix }}
+          name: jay-json-macos
           path: |
             build/darwin/*.app
             build/darwin/*.dmg
-            build/darwin/*.tar.gz
+            Jay-JSON.dmg
+            bin/*.app
 
       - name: Upload Windows artifact
-        if: matrix.platform == 'windows'
+        if: matrix.name == 'windows'
         uses: actions/upload-artifact@v4
         with:
           name: jay-json-windows
           path: |
             build/windows/*.exe
+            bin/*.exe
 
       - name: Upload Linux artifact
-        if: matrix.platform == 'linux'
+        if: matrix.name == 'linux'
         uses: actions/upload-artifact@v4
         with:
           name: jay-json-linux
           path: |
             build/linux/*
+            bin/*
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')

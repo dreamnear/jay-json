@@ -57,6 +57,20 @@ jobs:
       - name: Build
         run: wails3 build -platform ${{ matrix.platform }}/${{ matrix.arch }}
 
+      - name: Create DMG for macOS
+        if: matrix.platform == 'darwin'
+        run: |
+          brew install create-dmg
+          APP_NAME=$(ls build/darwin/*.app | head -1 | xargs basename)
+          create-dmg \
+            --volname "Jay JSON" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --app-drop-link 450 185 \
+            "build/darwin/Jay-JSON${{ matrix.suffix }}.dmg" \
+            "build/darwin/$APP_NAME"
+
       - name: List build outputs
         shell: bash
         run: ls -la build/
@@ -68,6 +82,7 @@ jobs:
           name: jay-json-macos${{ matrix.suffix }}
           path: |
             build/darwin/*.app
+            build/darwin/*.dmg
             build/darwin/*.tar.gz
 
       - name: Upload Windows artifact

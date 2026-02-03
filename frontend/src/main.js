@@ -40,12 +40,6 @@ const tabsContainer = document.getElementById('tabs-container');
 let tabs = [];
 let activeTabId = null;
 
-// Panel collapse state
-let collapsedPanels = {
-    editor: false,
-    preview: false
-};
-
 // =============================================================================
 // Panel Management
 // =============================================================================
@@ -54,9 +48,32 @@ function togglePanel(panelType) {
     const panel = document.getElementById(`${panelType}-panel`);
     if (!panel) return;
 
-    collapsedPanels[panelType] = !collapsedPanels[panelType];
+    const tab = tabs.find(t => t.id === activeTabId);
+    if (!tab) return;
 
-    if (collapsedPanels[panelType]) {
+    const otherPanelType = panelType === 'editor' ? 'preview' : 'editor';
+    const isCurrentlyCollapsed = tab.collapsedPanels[panelType];
+    const isOtherCollapsed = tab.collapsedPanels[otherPanelType];
+
+    // If trying to collapse this panel and the other is already collapsed,
+    // expand the other panel first
+    if (!isCurrentlyCollapsed && isOtherCollapsed) {
+        const otherPanel = document.getElementById(`${otherPanelType}-panel`);
+        if (otherPanel) {
+            tab.collapsedPanels[otherPanelType] = false;
+            otherPanel.classList.remove('collapsed');
+
+            // Update other panel's collapse button
+            const otherCollapseBtn = otherPanel.querySelector('.collapse-btn');
+            if (otherCollapseBtn) {
+                otherCollapseBtn.setAttribute('aria-expanded', 'true');
+            }
+        }
+    }
+
+    tab.collapsedPanels[panelType] = !tab.collapsedPanels[panelType];
+
+    if (tab.collapsedPanels[panelType]) {
         panel.classList.add('collapsed');
     } else {
         panel.classList.remove('collapsed');
@@ -65,7 +82,7 @@ function togglePanel(panelType) {
     // Update collapse button aria-expanded attribute
     const collapseBtn = panel.querySelector('.collapse-btn');
     if (collapseBtn) {
-        collapseBtn.setAttribute('aria-expanded', !collapsedPanels[panelType]);
+        collapseBtn.setAttribute('aria-expanded', !tab.collapsedPanels[panelType]);
     }
 
     // Save to storage
@@ -89,7 +106,11 @@ function createTab(filename = 'Untitled', content = '') {
         checkpointIndex: -1,
         isModified: false,
         lastFormatted: '',
-        lastMinified: ''
+        lastMinified: '',
+        collapsedPanels: {
+            editor: false,
+            preview: false
+        }
     };
     return tab;
 }
@@ -132,6 +153,9 @@ function loadTabIntoEditor(tab) {
     updateLineNumbers();
     updateStats();
     updateUndoRedoButtons();
+
+    // Restore panel collapse state for this tab
+    restorePanelState(tab);
 
     if (tab.content.trim()) {
         try {
@@ -216,10 +240,10 @@ function saveTabsToStorage() {
                 content: tab.content,
                 checkpoints: tab.checkpoints,
                 checkpointIndex: tab.checkpointIndex,
-                isModified: tab.isModified
+                isModified: tab.isModified,
+                collapsedPanels: tab.collapsedPanels
             })),
-            activeTabId: activeTabId,
-            collapsedPanels: collapsedPanels
+            activeTabId: activeTabId
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(tabsData));
     } catch (e) {
@@ -227,15 +251,22 @@ function saveTabsToStorage() {
     }
 }
 
-function restorePanelState() {
+function restorePanelState(tab) {
+    if (!tab || !tab.collapsedPanels) return;
+
     const editorPanel = document.getElementById('editor-panel');
     const previewPanel = document.getElementById('preview-panel');
 
-    if (collapsedPanels.editor && editorPanel) {
+    if (tab.collapsedPanels.editor && editorPanel) {
         editorPanel.classList.add('collapsed');
+    } else if (editorPanel) {
+        editorPanel.classList.remove('collapsed');
     }
-    if (collapsedPanels.preview && previewPanel) {
+
+    if (tab.collapsedPanels.preview && previewPanel) {
         previewPanel.classList.add('collapsed');
+    } else if (previewPanel) {
+        previewPanel.classList.remove('collapsed');
     }
 }
 
@@ -249,17 +280,15 @@ function loadTabsFromStorage() {
             return false;
         }
 
-        // Restore panels
-        if (tabsData.collapsedPanels) {
-            collapsedPanels = tabsData.collapsedPanels;
-        }
-        restorePanelState();
-
-        // Restore tabs
+        // Restore tabs with their collapsedPanels state
         tabs = tabsData.tabs.map(tabData => ({
             ...tabData,
             lastFormatted: '',
-            lastMinified: ''
+            lastMinified: '',
+            collapsedPanels: tabData.collapsedPanels || {
+                editor: false,
+                preview: false
+            }
         }));
 
         // Set and verify active tab
@@ -510,9 +539,17 @@ function renderTreeView(data, key, isRoot = false) {
     html += `<div class="tree-row" onclick="toggleNode('${nodeId}')">`;
 
     if (hasChildren) {
-        html += `<span class="tree-toggle" id="toggle-${nodeId}">▼</span>`;
+        html += `<span class="tree-toggle" id="toggle-${nodeId}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        </span>`;
     } else {
-        html += `<span class="tree-toggle invisible">▼</span>`;
+        html += `<span class="tree-toggle invisible">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        </span>`;
     }
 
     if (!isRoot) {

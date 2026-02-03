@@ -550,13 +550,20 @@ body {
     transition: transform var(--transition-base);
 }
 
-.panel.collapsed .collapse-btn svg {
+/* Editor panel: rotate left arrow to right when collapsed */
+.editor-panel.collapsed .collapse-btn svg {
     transform: rotate(180deg);
+}
+
+/* Preview panel: rotate right arrow to left when collapsed */
+.preview-panel.collapsed .collapse-btn svg {
+    transform: rotate(-180deg);
 }
 
 /* Collapsed Panel State */
 .panel.collapsed {
-    flex: 0 0 auto;
+    flex: 0 0 24px;
+    min-width: 24px;
     overflow: hidden;
 }
 
@@ -567,6 +574,25 @@ body {
 
 .panel.collapsed .panel-header {
     border-bottom: none;
+    padding: 0;
+    min-height: 24px;
+    height: 24px;
+}
+
+.panel.collapsed .panel-title,
+.panel.collapsed .panel-actions {
+    display: none;
+}
+
+.panel.collapsed .panel-header-left {
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+}
+
+.panel.collapsed .collapse-btn {
+    width: 100%;
+    height: 100%;
 }
 
 /* Buttons */
@@ -815,11 +841,15 @@ body {
     color: var(--text-tertiary);
     transition: transform var(--transition-base);
     flex-shrink: 0;
-    font-size: 10px;
+}
+
+.tree-toggle svg {
+    width: 14px;
+    height: 14px;
 }
 
 .tree-toggle.collapsed {
-    transform: rotate(-90deg);
+    transform: rotate(90deg);
 }
 
 .tree-toggle.invisible {

@@ -53,23 +53,28 @@ jobs:
       - name: Build
         run: wails3 build
 
-      - name: Create DMG for macOS
-        if: matrix.name == 'macos'
-        run: |
-          brew install create-dmg
-          APP_NAME=$(ls build/darwin/*.app 2>/dev/null || ls bin/*.app 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo "json_tools.dev.app")
-          create-dmg \
-            --volname "Jay JSON" \
-            --window-pos 200 120 \
-            --window-size 600 400 \
-            --icon-size 100 \
-            --app-drop-link 450 185 \
-            "Jay-JSON.dmg" \
-            "$APP_NAME"
-
       - name: List build outputs
         shell: bash
         run: ls -la build/ bin/ 2>/dev/null || ls -la build/ || true
+
+      - name: Create DMG for macOS
+        if: matrix.name == 'macos'
+        run: |
+          # Check if .app bundle exists
+          if ls build/darwin/*.app 2>/dev/null || ls bin/*.app 2>/dev/null; then
+            brew install create-dmg
+            APP_NAME=$(ls build/darwin/*.app 2>/dev/null || ls bin/*.app 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo "json_tools.dev.app")
+            create-dmg \
+              --volname "Jay JSON" \
+              --window-pos 200 120 \
+              --window-size 600 400 \
+              --icon-size 100 \
+              --app-drop-link 450 185 \
+              "Jay-JSON.dmg" \
+              "$APP_NAME"
+          else
+            echo "No .app bundle found, skipping DMG creation"
+          fi
 
       - name: Upload macOS artifact
         if: matrix.name == 'macos'
@@ -81,6 +86,7 @@ jobs:
             build/darwin/*.dmg
             Jay-JSON.dmg
             bin/*.app
+            bin/*
 
       - name: Upload Windows artifact
         if: matrix.name == 'windows'
@@ -90,6 +96,8 @@ jobs:
           path: |
             build/windows/*.exe
             bin/*.exe
+            build/windows/*
+            bin/*
 
       - name: Upload Linux artifact
         if: matrix.name == 'linux'

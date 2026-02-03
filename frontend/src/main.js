@@ -14,8 +14,6 @@ const DEBOUNCE_DELAY = 400;
 // State
 // =============================================================================
 
-let lastFormattedJSON = '';
-let lastMinifiedJSON = '';
 let checkpoints = [];
 let currentCheckpointIndex = -1;
 let validateTimeout = null;
@@ -125,27 +123,16 @@ function closeTab(tabId) {
     renderTabs();
 }
 
-function setActiveTab(tabId) {
-    activeTabId = tabId;
-    const tab = tabs.find(t => t.id === tabId);
-    if (!tab) return;
-
-    // Save current state before switching
-    if (editor.value) {
-        saveCurrentTabState();
-    }
-
-    // Load tab content
+function loadTabIntoEditor(tab) {
     editor.value = tab.content;
     checkpoints = tab.checkpoints;
     currentCheckpointIndex = tab.checkpointIndex;
 
-    // Update UI
     applyHighlightingIfNeeded(tab.content);
     updateLineNumbers();
     updateStats();
+    updateUndoRedoButtons();
 
-    // Update tree view if content exists
     if (tab.content.trim()) {
         try {
             const parsed = JSON.parse(tab.content);
@@ -156,7 +143,15 @@ function setActiveTab(tabId) {
     } else {
         outputDisplay.innerHTML = EMPTY_PLACEHOLDER;
     }
+}
 
+function setActiveTab(tabId) {
+    const tab = tabs.find(t => t.id === tabId);
+    if (!tab) return;
+
+    saveCurrentTabState();
+    activeTabId = tabId;
+    loadTabIntoEditor(tab);
     renderTabs();
 }
 
@@ -232,6 +227,18 @@ function saveTabsToStorage() {
     }
 }
 
+function restorePanelState() {
+    const editorPanel = document.getElementById('editor-panel');
+    const previewPanel = document.getElementById('preview-panel');
+
+    if (collapsedPanels.editor && editorPanel) {
+        editorPanel.classList.add('collapsed');
+    }
+    if (collapsedPanels.preview && previewPanel) {
+        previewPanel.classList.add('collapsed');
+    }
+}
+
 function loadTabsFromStorage() {
     try {
         const tabsDataStr = localStorage.getItem(STORAGE_KEY);
@@ -246,17 +253,7 @@ function loadTabsFromStorage() {
         if (tabsData.collapsedPanels) {
             collapsedPanels = tabsData.collapsedPanels;
         }
-
-        // Apply collapsed state
-        const editorPanel = document.getElementById('editor-panel');
-        const previewPanel = document.getElementById('preview-panel');
-
-        if (collapsedPanels.editor && editorPanel) {
-            editorPanel.classList.add('collapsed');
-        }
-        if (collapsedPanels.preview && previewPanel) {
-            previewPanel.classList.add('collapsed');
-        }
+        restorePanelState();
 
         // Restore tabs
         tabs = tabsData.tabs.map(tabData => ({
@@ -265,10 +262,8 @@ function loadTabsFromStorage() {
             lastMinified: ''
         }));
 
-        // Set active tab
+        // Set and verify active tab
         activeTabId = tabsData.activeTabId || tabs[0].id;
-
-        // Verify active tab exists
         if (!tabs.find(t => t.id === activeTabId)) {
             activeTabId = tabs[0].id;
         }
@@ -276,22 +271,7 @@ function loadTabsFromStorage() {
         // Load the active tab content
         const tab = tabs.find(t => t.id === activeTabId);
         if (tab) {
-            editor.value = tab.content;
-            checkpoints = tab.checkpoints;
-            currentCheckpointIndex = tab.checkpointIndex;
-
-            applyHighlightingIfNeeded(tab.content);
-            updateLineNumbers();
-            updateStats();
-
-            if (tab.content.trim()) {
-                try {
-                    const parsed = JSON.parse(tab.content);
-                    outputDisplay.innerHTML = renderTreeView(parsed, 'root');
-                } catch {
-                    outputDisplay.innerHTML = EMPTY_PLACEHOLDER;
-                }
-            }
+            loadTabIntoEditor(tab);
         }
 
         renderTabs();
@@ -347,23 +327,7 @@ function loadPendingTabData() {
         tabs = [tab];
         activeTabId = tab.id;
 
-        editor.value = tab.content;
-        checkpoints = tab.checkpoints;
-        currentCheckpointIndex = tab.checkpointIndex;
-
-        applyHighlightingIfNeeded(tab.content);
-        updateLineNumbers();
-        updateStats();
-
-        if (tab.content.trim()) {
-            try {
-                const parsed = JSON.parse(tab.content);
-                outputDisplay.innerHTML = renderTreeView(parsed, 'root');
-            } catch {
-                outputDisplay.innerHTML = EMPTY_PLACEHOLDER;
-            }
-        }
-
+        loadTabIntoEditor(tab);
         renderTabs();
         localStorage.removeItem('pendingTabData');
 
@@ -431,14 +395,20 @@ function applyHighlightingIfNeeded(content) {
     }
 }
 
-// Process JSON input: format and minify, caching results
+// Process JSON input: format and minify, caching results in the current tab
 async function processJSON(input) {
     const [formatted, minified] = await Promise.all([
         JSONService.FormatJSON(input, true),
         JSONService.MinifyJSON(input)
     ]);
-    lastFormattedJSON = formatted;
-    lastMinifiedJSON = minified;
+
+    // Store in the current tab
+    const tab = tabs.find(t => t.id === activeTabId);
+    if (tab) {
+        tab.lastFormatted = formatted;
+        tab.lastMinified = minified;
+    }
+
     return { formatted, minified };
 }
 
@@ -705,11 +675,15 @@ async function copyCachedOrProcess(cachedValue, processKey, successMsg) {
 }
 
 async function copyAsFormatted() {
-    await copyCachedOrProcess(lastFormattedJSON, 'formatted', 'Copied formatted JSON!');
+    const tab = tabs.find(t => t.id === activeTabId);
+    const cachedValue = tab ? tab.lastFormatted : '';
+    await copyCachedOrProcess(cachedValue, 'formatted', 'Copied formatted JSON!');
 }
 
 async function copyAsMinified() {
-    await copyCachedOrProcess(lastMinifiedJSON, 'minified', 'Copied minified JSON!');
+    const tab = tabs.find(t => t.id === activeTabId);
+    const cachedValue = tab ? tab.lastMinified : '';
+    await copyCachedOrProcess(cachedValue, 'minified', 'Copied minified JSON!');
 }
 
 async function copyOutput() {
@@ -737,10 +711,15 @@ function clearEditor() {
     setTimeout(() => {
         // Clear editor state
         editor.value = '';
-        lastFormattedJSON = '';
-        lastMinifiedJSON = '';
         editor.classList.remove('highlighted');
         editorHighlighted.innerHTML = '';
+
+        // Clear cached values in current tab
+        const tab = tabs.find(t => t.id === activeTabId);
+        if (tab) {
+            tab.lastFormatted = '';
+            tab.lastMinified = '';
+        }
 
         // Reset output display
         outputDisplay.innerHTML = EMPTY_PLACEHOLDER;
@@ -916,12 +895,7 @@ document.addEventListener('keydown', (e) => {
             break;
         case 'Tab':
             e.preventDefault();
-            // Switch to next tab
-            const currentIndex = tabs.findIndex(t => t.id === activeTabId);
-            if (currentIndex >= 0 && tabs.length > 1) {
-                const nextIndex = (currentIndex + 1) % tabs.length;
-                setActiveTab(tabs[nextIndex].id);
-            }
+            switchToNextTab();
             break;
         case 'o':
         case 'O':
@@ -939,7 +913,7 @@ document.addEventListener('keydown', (e) => {
         case '7':
         case '8':
         case '9':
-            // Switch to tab by number
+            // Switch to tab by number (1-based)
             const tabIndex = parseInt(e.key) - 1;
             if (tabIndex >= 0 && tabIndex < tabs.length) {
                 e.preventDefault();
@@ -961,24 +935,37 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+function getActiveTabIndex() {
+    return tabs.findIndex(t => t.id === activeTabId);
+}
+
+function switchToNextTab() {
+    if (tabs.length <= 1) return;
+    const currentIndex = getActiveTabIndex();
+    if (currentIndex >= 0) {
+        const nextIndex = (currentIndex + 1) % tabs.length;
+        setActiveTab(tabs[nextIndex].id);
+    }
+}
+
+function switchToPreviousTab() {
+    if (tabs.length <= 1) return;
+    const currentIndex = getActiveTabIndex();
+    const targetIndex = currentIndex <= 0 ? tabs.length - 1 : currentIndex - 1;
+    setActiveTab(tabs[targetIndex].id);
+}
+
 // Handle arrow key navigation for tabs
 document.addEventListener('keydown', (e) => {
     // Only handle arrow keys when not in editor
     if (document.activeElement === editor) return;
 
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        const currentIndex = tabs.findIndex(t => t.id === activeTabId);
-        if (currentIndex === -1) return;
-
-        let newIndex;
-        if (e.key === 'ArrowLeft') {
-            newIndex = currentIndex > 0 ? currentIndex - 1 : tabs.length - 1;
-        } else {
-            newIndex = (currentIndex + 1) % tabs.length;
-        }
-
+    if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        setActiveTab(tabs[newIndex].id);
+        switchToPreviousTab();
+    } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        switchToNextTab();
     }
 });
 

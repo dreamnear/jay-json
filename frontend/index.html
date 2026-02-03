@@ -15,6 +15,33 @@
             <span class="title-bar-title">Jay JSON</span>
         </div>
         <div class="title-bar-actions" role="toolbar" aria-label="Window Controls">
+            <!-- Theme Selector -->
+            <div class="theme-selector">
+                <button class="theme-btn" id="themeBtn" aria-label="Theme Selector" aria-haspopup="true" aria-expanded="false">
+                    <span class="theme-icon">💻</span>
+                    <span class="theme-name">跟随系统</span>
+                    <svg class="theme-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </button>
+                <div class="theme-menu" id="themeMenu" role="menu" aria-label="Theme Options">
+                    <div class="theme-option" data-value="system" role="menuitemradio" aria-checked="true" tabindex="0">
+                        <span class="theme-radio"></span>
+                        <span class="theme-option-icon">💻</span>
+                        <span class="theme-option-name">跟随系统</span>
+                    </div>
+                    <div class="theme-option" data-value="light" role="menuitemradio" aria-checked="false" tabindex="0">
+                        <span class="theme-radio"></span>
+                        <span class="theme-option-icon">☀️</span>
+                        <span class="theme-option-name">亮色模式</span>
+                    </div>
+                    <div class="theme-option" data-value="dark" role="menuitemradio" aria-checked="false" tabindex="0">
+                        <span class="theme-radio"></span>
+                        <span class="theme-option-icon">🌙</span>
+                        <span class="theme-option-name">暗色模式</span>
+                    </div>
+                </div>
+            </div>
             <button class="title-bar-btn" onclick="openNewWindow()" title="Open New Window (⌘N)" aria-label="New Window">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />

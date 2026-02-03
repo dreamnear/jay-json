@@ -2,6 +2,146 @@ import { JSONService } from "../bindings/changeme";
 import { WindowManager } from "../bindings/changeme";
 
 // =============================================================================
+// Theme Manager
+// =============================================================================
+
+const ThemeManager = {
+    current: 'system', // 'system' | 'light' | 'dark'
+    storageKey: 'jay-theme',
+
+    // Theme configuration
+    themes: {
+        system: { icon: '💻', name: '跟随系统' },
+        light: { icon: '☀️', name: '亮色模式' },
+        dark: { icon: '🌙', name: '暗色模式' }
+    },
+
+    init() {
+        // Load saved theme preference
+        const saved = localStorage.getItem(this.storageKey);
+        if (saved && ['system', 'light', 'dark'].includes(saved)) {
+            this.current = saved;
+        }
+
+        // Apply initial theme
+        this.applyTheme();
+
+        // Listen for system theme changes when in system mode
+        this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        this.mediaQuery.addEventListener('change', () => {
+            if (this.current === 'system') {
+                this.applyTheme();
+            }
+        });
+
+        // Listen for theme changes from other windows
+        window.addEventListener('storage', (e) => {
+            if (e.key === this.storageKey && e.newValue) {
+                this.current = e.newValue;
+                this.applyTheme();
+                this.updateUI();
+            }
+        });
+
+        // Setup UI
+        this.setupUI();
+    },
+
+    setTheme(theme) {
+        if (!['system', 'light', 'dark'].includes(theme)) return;
+
+        this.current = theme;
+        localStorage.setItem(this.storageKey, theme);
+        this.applyTheme();
+        this.updateUI();
+    },
+
+    applyTheme() {
+        const root = document.documentElement;
+
+        // Remove data-theme attribute
+        root.removeAttribute('data-theme');
+
+        if (this.current === 'dark') {
+            root.classList.add('dark');
+            root.setAttribute('data-theme', 'dark');
+        } else if (this.current === 'light') {
+            root.classList.remove('dark');
+            root.setAttribute('data-theme', 'light');
+        } else {
+            // System mode - let CSS media query handle it
+            root.classList.remove('dark');
+            root.removeAttribute('data-theme');
+        }
+    },
+
+    updateUI() {
+        const btn = document.getElementById('themeBtn');
+        const menu = document.getElementById('themeMenu');
+        if (!btn || !menu) return;
+
+        const theme = this.themes[this.current];
+
+        // Update button
+        btn.querySelector('.theme-icon').textContent = theme.icon;
+        btn.querySelector('.theme-name').textContent = theme.name;
+
+        // Update menu options
+        menu.querySelectorAll('.theme-option').forEach(option => {
+            const value = option.dataset.value;
+            const isChecked = value === this.current;
+            option.setAttribute('aria-checked', isChecked);
+        });
+    },
+
+    setupUI() {
+        const btn = document.getElementById('themeBtn');
+        const menu = document.getElementById('themeMenu');
+        if (!btn || !menu) return;
+
+        // Toggle menu on button click
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+            btn.setAttribute('aria-expanded', !isExpanded);
+            menu.classList.toggle('show', !isExpanded);
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', () => {
+            menu.classList.remove('show');
+            btn.setAttribute('aria-expanded', 'false');
+        });
+
+        // Prevent menu from closing when clicking inside
+        menu.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        // Handle option clicks
+        menu.querySelectorAll('.theme-option').forEach(option => {
+            option.addEventListener('click', () => {
+                const value = option.dataset.value;
+                this.setTheme(value);
+                menu.classList.remove('show');
+                btn.setAttribute('aria-expanded', 'false');
+            });
+
+            // Keyboard navigation
+            option.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    option.click();
+                }
+            });
+        });
+
+        // Initial UI update
+        this.updateUI();
+    }
+};
+
+// =============================================================================
 // Constants
 // =============================================================================
 
@@ -1057,6 +1197,9 @@ window.toggleAlwaysOnTop = async () => {
 // =============================================================================
 // Initialization
 // =============================================================================
+
+// Initialize theme manager first
+ThemeManager.init();
 
 // Priority order for loading tabs:
 // 1. Pending data from "Open in Window" feature

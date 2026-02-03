@@ -68,18 +68,13 @@ const ThemeManager = {
     applyTheme() {
         const root = document.documentElement;
 
-        // Remove data-theme attribute
-        root.removeAttribute('data-theme');
-
+        // Only use data-theme attribute, avoid classList changes that trigger redraws
         if (this.current === 'dark') {
-            root.classList.add('dark');
             root.setAttribute('data-theme', 'dark');
         } else if (this.current === 'light') {
-            root.classList.remove('dark');
             root.setAttribute('data-theme', 'light');
         } else {
-            // System mode - let CSS media query handle it
-            root.classList.remove('dark');
+            // System mode - remove attribute to let CSS media query handle it
             root.removeAttribute('data-theme');
         }
     },

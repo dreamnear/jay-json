@@ -67,8 +67,8 @@
     --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Dark mode - now controlled by .dark class instead of @media */
-:root.dark {
+/* Dark mode - controlled by data-theme attribute to avoid window redraw */
+:root[data-theme="dark"] {
     --bg-primary: #09090B;
     --bg-secondary: #18181B;
     --bg-panel: #0C0C0E;

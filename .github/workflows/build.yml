@@ -1,0 +1,132 @@
+name: Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            name: macos
+          - os: windows-latest
+            name: windows
+          - os: ubuntu-latest
+            name: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Install Linux dependencies
+        if: matrix.name == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: bun install
+
+      - name: Build
+        run: wails3 build
+
+      - name: List build outputs
+        shell: bash
+        run: ls -la build/ bin/ 2>/dev/null || ls -la build/ || true
+
+      - name: Create DMG for macOS
+        if: matrix.name == 'macos'
+        run: |
+          # Check if .app bundle exists
+          if ls build/darwin/*.app 2>/dev/null || ls bin/*.app 2>/dev/null; then
+            brew install create-dmg
+            APP_NAME=$(ls build/darwin/*.app 2>/dev/null || ls bin/*.app 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo "json_tools.dev.app")
+            create-dmg \
+              --volname "Jay JSON" \
+              --window-pos 200 120 \
+              --window-size 600 400 \
+              --icon-size 100 \
+              --app-drop-link 450 185 \
+              "Jay-JSON.dmg" \
+              "$APP_NAME"
+          else
+            echo "No .app bundle found, skipping DMG creation"
+          fi
+
+      - name: Upload macOS artifact
+        if: matrix.name == 'macos'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jay-json-macos
+          path: |
+            build/darwin/*.app
+            build/darwin/*.dmg
+            Jay-JSON.dmg
+            bin/*.app
+            bin/*
+
+      - name: Upload Windows artifact
+        if: matrix.name == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jay-json-windows
+          path: |
+            build/windows/*.exe
+            bin/*.exe
+            build/windows/*
+            bin/*
+
+      - name: Upload Linux artifact
+        if: matrix.name == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jay-json-linux
+          path: |
+            build/linux/*
+            bin/*
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" --generate-notes \
+            artifacts/jay-json-*/* || true

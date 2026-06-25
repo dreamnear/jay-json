@@ -1,5 +1,11 @@
-import { JSONService } from "../bindings/changeme";
-import { WindowManager } from "../bindings/changeme";
+import { JSONService } from "../bindings/github.com/JessonChan/jay-json";
+import { WindowManager } from "../bindings/github.com/JessonChan/jay-json";
+import { escapeHtml, renderTreeView, toggleNode } from "./tree-view.js";
+
+// Re-export to window for HTML onclick handlers
+window.escapeHtml = escapeHtml;
+window.renderTreeView = renderTreeView;
+window.toggleNode = toggleNode;
 
 // =============================================================================
 // Constants
@@ -161,7 +167,8 @@ function loadTabIntoEditor(tab) {
         try {
             const parsed = JSON.parse(tab.content);
             outputDisplay.innerHTML = renderTreeView(parsed, 'root');
-        } catch {
+        } catch (e) {
+            console.error('Failed to parse JSON for tree view:', e);
             outputDisplay.innerHTML = EMPTY_PLACEHOLDER;
         }
     } else {
@@ -319,53 +326,60 @@ async function openInWindow() {
     // Save current state first
     saveCurrentTabState();
 
-    // Store tab data in localStorage for the new window to retrieve
+    // Store tab data with unique key to avoid race conditions
+    const transferId = `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const pendingData = {
+        id: transferId,
         filename: tab.filename,
         content: tab.content,
         checkpoints: tab.checkpoints,
         checkpointIndex: tab.checkpointIndex
     };
-    localStorage.setItem('pendingTabData', JSON.stringify(pendingData));
+    localStorage.setItem(`pendingTabData:${transferId}`, JSON.stringify(pendingData));
 
     // Open new window
     try {
         await WindowManager.OpenNewWindow();
         showFeedback('✓ Opened in new window');
-    } catch {
+    } catch (e) {
+        console.error('Failed to open window:', e);
         showFeedback('✗ Failed to open window');
     }
 
-    // Clear the pending data after a short delay
+    // Clean up after a delay in case new window didn't consume it
     setTimeout(() => {
-        localStorage.removeItem('pendingTabData');
+        localStorage.removeItem(`pendingTabData:${transferId}`);
     }, 5000);
 }
 
 // Check if this window was opened with pending tab data
 function loadPendingTabData() {
-    const pendingDataStr = localStorage.getItem('pendingTabData');
-    if (!pendingDataStr) return false;
+    // Find the oldest pending tab data entry
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith('pendingTabData:')) continue;
 
-    try {
-        const pendingData = JSON.parse(pendingDataStr);
-        const tab = createTab(pendingData.filename, pendingData.content);
-        tab.checkpoints = pendingData.checkpoints || [];
-        tab.checkpointIndex = pendingData.checkpointIndex || -1;
+        try {
+            const pendingData = JSON.parse(localStorage.getItem(key));
+            const tab = createTab(pendingData.filename, pendingData.content);
+            tab.checkpoints = pendingData.checkpoints || [];
+            tab.checkpointIndex = pendingData.checkpointIndex || -1;
 
-        tabs = [tab];
-        activeTabId = tab.id;
+            tabs = [tab];
+            activeTabId = tab.id;
 
-        loadTabIntoEditor(tab);
-        renderTabs();
-        localStorage.removeItem('pendingTabData');
+            loadTabIntoEditor(tab);
+            renderTabs();
+            localStorage.removeItem(key);
 
-        return true;
-    } catch (e) {
-        console.error('Failed to load pending tab data:', e);
-        localStorage.removeItem('pendingTabData');
-        return false;
+            return true;
+        } catch (e) {
+            console.error('Failed to load pending tab data:', e);
+            localStorage.removeItem(key);
+            continue;
+        }
     }
+    return false;
 }
 
 // =============================================================================
@@ -404,12 +418,6 @@ function isEmptyInput() {
     return !editor.value.trim();
 }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 function isFormattedContent(content) {
     return content.includes('\n  ') || content.includes('\n    ');
 }
@@ -427,7 +435,7 @@ function applyHighlightingIfNeeded(content) {
 // Process JSON input: format and minify, caching results in the current tab
 async function processJSON(input) {
     const [formatted, minified] = await Promise.all([
-        JSONService.FormatJSON(input, true),
+        JSONService.FormatJSON(input),
         JSONService.MinifyJSON(input)
     ]);
 
@@ -454,6 +462,8 @@ function setValidationStatus(isValid) {
     }
 }
 
+let validateRequestId = 0;
+
 // Auto-validate and format on input with debouncing
 function autoValidate() {
     clearTimeout(validateTimeout);
@@ -466,15 +476,21 @@ function autoValidate() {
     }
 
     validateTimeout = setTimeout(async () => {
+        const requestId = ++validateRequestId;
         try {
             const [isValid] = await JSONService.ValidateJSON(input);
+            // Discard stale response if a newer request was made
+            if (requestId !== validateRequestId) return;
             setValidationStatus(isValid);
 
             if (isValid) {
                 const { formatted } = await processJSON(input);
+                if (requestId !== validateRequestId) return;
                 showOutput(formatted);
             }
-        } catch {
+        } catch (e) {
+            if (requestId !== validateRequestId) return;
+            console.error('Auto-validation failed:', e);
             setValidationStatus(false);
             outputDisplay.innerHTML = INVALID_JSON_PLACEHOLDER;
         }
@@ -513,7 +529,7 @@ function showOutput(content) {
             const parsed = JSON.parse(content);
             outputDisplay.innerHTML = renderTreeView(parsed, 'root');
         } catch (e) {
-            outputDisplay.innerHTML = `<div class="preview-placeholder" style="color: var(--accent-error);">Invalid JSON: ${e.message}</div>`;
+            outputDisplay.innerHTML = `<div class="preview-placeholder" style="color: var(--accent-error);">Invalid JSON: ${escapeHtml(e.message)}</div>`;
         }
 
         outputDisplay.style.transition = 'all 0.3s ease';
@@ -521,90 +537,6 @@ function showOutput(content) {
         outputDisplay.style.transform = 'translateY(0)';
     }, 150);
 }
-
-function renderTreeView(data, key, isRoot = false) {
-    const type = getType(data);
-    const hasChildren = type === 'object' || type === 'array';
-    const nodeId = `node-${Math.random().toString(36).substr(2, 9)}`;
-
-    let html = '';
-
-    if (isRoot) {
-        html += `<div class="tree-node tree-root">`;
-    } else {
-        html += `<div class="tree-node">`;
-    }
-
-    // Row with toggle, key, type
-    html += `<div class="tree-row" onclick="toggleNode('${nodeId}')">`;
-
-    if (hasChildren) {
-        html += `<span class="tree-toggle" id="toggle-${nodeId}">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-        </span>`;
-    } else {
-        html += `<span class="tree-toggle invisible">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-        </span>`;
-    }
-
-    if (!isRoot) {
-        html += `<span class="tree-key">${escapeHtml(key)}:</span>`;
-    }
-
-    if (hasChildren) {
-        const length = Object.keys(data).length;
-        const size = type === 'array' ? `[${length}]` : `{${length}}`;
-        html += `<span class="tree-type ${type}">${type.charAt(0).toUpperCase() + type.slice(1)}</span>`;
-        html += `<span class="tree-type">${size}</span>`;
-    } else {
-        // Leaf node - show value
-        html += `<span class="tree-type ${type}">${type.charAt(0).toUpperCase() + type.slice(1)}</span>`;
-        html += `<span class="tree-value ${type}">${formatValue(data)}</span>`;
-    }
-
-    html += `</div>`; // End tree-row
-
-    // Children
-    if (hasChildren) {
-        html += `<div class="tree-children" id="children-${nodeId}">`;
-        for (const [k, v] of Object.entries(data)) {
-            html += renderTreeView(v, k);
-        }
-        html += `</div>`; // End tree-children
-    }
-
-    html += `</div>`; // End tree-node
-
-    return html;
-}
-
-function getType(value) {
-    if (value === null) return 'null';
-    if (Array.isArray(value)) return 'array';
-    return typeof value;
-}
-
-function formatValue(value) {
-    if (value === null) return 'null';
-    if (typeof value === 'string') return `"${escapeHtml(value)}"`;
-    return String(value);
-}
-
-// Toggle tree node expansion
-window.toggleNode = function(nodeId) {
-    const toggle = document.getElementById(`toggle-${nodeId}`);
-    const children = document.getElementById(`children-${nodeId}`);
-
-    if (toggle && children) {
-        toggle.classList.toggle('collapsed');
-        children.classList.toggle('collapsed');
-    }
-};
 
 function syntaxHighlight(json) {
     json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -686,7 +618,8 @@ async function copyToClipboard(content, successMsg) {
     try {
         await navigator.clipboard.writeText(content);
         showFeedback(successMsg);
-    } catch {
+    } catch (e) {
+        console.error('Failed to copy to clipboard:', e);
         showFeedback('Failed to copy');
     }
 }
@@ -706,7 +639,8 @@ async function copyCachedOrProcess(cachedValue, processKey, successMsg) {
     try {
         const { [processKey]: result } = await processJSON(editor.value.trim());
         await copyToClipboard(result, successMsg);
-    } catch {
+    } catch (e) {
+        console.error('Copy operation failed:', e);
         showFeedback('Invalid JSON');
     }
 }
@@ -810,7 +744,7 @@ function saveCheckpoint(content) {
 }
 
 function undoCheckpoint() {
-    if (currentCheckpointIndex < 0) return;
+    if (currentCheckpointIndex <= 0) return;
 
     pressButton('undoCheckpoint');
 
@@ -1032,7 +966,8 @@ window.openNewWindow = async () => {
     try {
         await WindowManager.OpenNewWindow();
         showFeedback('✓ New window opened');
-    } catch {
+    } catch (e) {
+        console.error('Failed to open new window:', e);
         showFeedback('✗ Failed to open window');
     }
 };
@@ -1049,7 +984,8 @@ window.toggleAlwaysOnTop = async () => {
             pinBtn.classList.remove('active');
             showFeedback('📌 Window unpinned');
         }
-    } catch {
+    } catch (e) {
+        console.error('Failed to toggle pin:', e);
         showFeedback('✗ Failed to toggle pin');
     }
 };

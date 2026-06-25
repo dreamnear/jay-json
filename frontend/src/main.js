@@ -1,20 +1,12 @@
 import { JSONService } from "../bindings/github.com/JessonChan/jay-json";
 import { WindowManager } from "../bindings/github.com/JessonChan/jay-json";
 import { escapeHtml, renderTreeView, toggleNode } from "./tree-view.js";
+import { EMPTY_PLACEHOLDER, INVALID_JSON_PLACEHOLDER, CHECKPOINT_LIMIT, DEBOUNCE_DELAY, editor, outputDisplay, validationStatus, charCount, undoBtn, redoBtn, tabsContainer } from "./constants.js";
 
 // Re-export to window for HTML onclick handlers
 window.escapeHtml = escapeHtml;
 window.renderTreeView = renderTreeView;
 window.toggleNode = toggleNode;
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-const EMPTY_PLACEHOLDER = '<div class="preview-placeholder">Interactive tree view will appear here...</div>';
-const INVALID_JSON_PLACEHOLDER = '<div class="preview-placeholder" style="color: var(--accent-error);">Invalid JSON - Please check your syntax</div>';
-const CHECKPOINT_LIMIT = 50;
-const DEBOUNCE_DELAY = 400;
 
 // =============================================================================
 // State
@@ -23,21 +15,6 @@ const DEBOUNCE_DELAY = 400;
 let checkpoints = [];
 let currentCheckpointIndex = -1;
 let validateTimeout = null;
-
-// =============================================================================
-// DOM Elements
-// =============================================================================
-
-const editor = document.getElementById('json-editor');
-const editorHighlighted = document.getElementById('json-editor-highlighted');
-const editorLineNumbers = document.getElementById('editor-line-numbers');
-const outputDisplay = document.getElementById('output-display');
-const validationStatus = document.getElementById('validation-status');
-const charCount = document.getElementById('char-count');
-const statusItem = document.querySelector('.status-item:first-child');
-const undoBtn = document.getElementById('undo-btn');
-const redoBtn = document.getElementById('redo-btn');
-const tabsContainer = document.getElementById('tabs-container');
 
 // =============================================================================
 // Tab State

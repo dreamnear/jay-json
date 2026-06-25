@@ -1,105 +1,94 @@
-// Checkpoint System - Undo/Redo functionality
+// Checkpoint System - undo/redo state management
 
 import { editor, undoBtn, redoBtn, CHECKPOINT_LIMIT } from './constants.js';
-import { pressButton, applyHighlightingIfNeeded, updateStats, updateLineNumbers, autoValidate, showFeedback } from './helpers.js';
+import { applyHighlightingIfNeeded, updateStats, updateLineNumbers } from './editor-utils.js';
+import { pressButton, showFeedback } from './feedback.js';
 
-// State - will be initialized externally
-let checkpoints = [];
-let currentCheckpointIndex = -1;
+// Mutable state (object wrapper for reliable live binding across modules)
+export const cpState = {
+    checkpoints: [],
+    currentCheckpointIndex: -1,
+};
 
-// Set checkpoint state (called from main.js during initialization)
-export function setCheckpointState(cp, idx) {
-    checkpoints = cp;
-    currentCheckpointIndex = idx;
+// Dependencies injected from main.js to avoid circular imports
+let autoValidateFn = () => {};
+let saveCurrentTabStateFn = () => {};
+
+export function setCheckpointDeps({ autoValidate, saveCurrentTabState }) {
+    autoValidateFn = autoValidate;
+    saveCurrentTabStateFn = saveCurrentTabState;
 }
 
-// Get checkpoint state (for saving to tab state)
-export function getCheckpointState() {
-    return { checkpoints, currentCheckpointIndex };
-}
-
-// Reset checkpoints
-export function resetCheckpoints() {
-    checkpoints = [];
-    currentCheckpointIndex = -1;
-}
-
-// Save current content as checkpoint
-export function saveCheckpoint(content, saveCurrentTabStateFn) {
-    // Remove any checkpoints after current index (when undoing then making new changes)
-    checkpoints = checkpoints.slice(0, currentCheckpointIndex + 1);
-
-    // Don't save if same as last checkpoint
-    if (checkpoints.length > 0 && checkpoints[checkpoints.length - 1] === content) {
-        return;
-    }
-
-    checkpoints.push(content);
-    currentCheckpointIndex++;
-
-    // Limit checkpoint history
-    if (checkpoints.length > CHECKPOINT_LIMIT) {
-        checkpoints.shift();
-        currentCheckpointIndex--;
-    }
-
-    // Save to tab state
-    if (saveCurrentTabStateFn) {
-        saveCurrentTabStateFn();
-    }
-
+// Restore checkpoint state when switching tabs
+export function loadCheckpointState(checkpoints, index) {
+    cpState.checkpoints = checkpoints || [];
+    cpState.currentCheckpointIndex = index ?? -1;
     updateUndoRedoButtons();
 }
 
-// Undo to previous checkpoint
+// Save current content as a checkpoint
+export function saveCheckpoint(content) {
+    // Drop any redo history after current index
+    cpState.checkpoints = cpState.checkpoints.slice(0, cpState.currentCheckpointIndex + 1);
+
+    // Skip duplicate of latest checkpoint
+    if (cpState.checkpoints.length > 0 && cpState.checkpoints[cpState.checkpoints.length - 1] === content) {
+        return;
+    }
+
+    cpState.checkpoints.push(content);
+    cpState.currentCheckpointIndex++;
+
+    // Cap history length
+    if (cpState.checkpoints.length > CHECKPOINT_LIMIT) {
+        cpState.checkpoints.shift();
+        cpState.currentCheckpointIndex--;
+    }
+
+    saveCurrentTabStateFn();
+    updateUndoRedoButtons();
+}
+
 export function undoCheckpoint() {
-    if (currentCheckpointIndex <= 0) return;
+    if (cpState.currentCheckpointIndex <= 0) return;
 
     pressButton('undoCheckpoint');
 
-    currentCheckpointIndex--;
-    const content = checkpoints[currentCheckpointIndex];
+    cpState.currentCheckpointIndex--;
+    const content = cpState.checkpoints[cpState.currentCheckpointIndex];
     editor.value = content;
 
     applyHighlightingIfNeeded(content);
     updateUndoRedoButtons();
     updateStats();
     updateLineNumbers();
-    autoValidate();
+    autoValidateFn();
 
     showFeedback('↩️ Undone');
 }
 
-// Redo to next checkpoint
 export function redoCheckpoint() {
-    if (currentCheckpointIndex >= checkpoints.length - 1) return;
+    if (cpState.currentCheckpointIndex >= cpState.checkpoints.length - 1) return;
 
     pressButton('redoCheckpoint');
 
-    currentCheckpointIndex++;
-    const content = checkpoints[currentCheckpointIndex];
+    cpState.currentCheckpointIndex++;
+    const content = cpState.checkpoints[cpState.currentCheckpointIndex];
     editor.value = content;
 
     applyHighlightingIfNeeded(content);
     updateUndoRedoButtons();
     updateStats();
     updateLineNumbers();
-    autoValidate();
+    autoValidateFn();
 
     showFeedback('↪️ Redone');
 }
 
-// Update undo/redo button states
 export function updateUndoRedoButtons() {
-    undoBtn.disabled = currentCheckpointIndex < 0;
-    redoBtn.disabled = currentCheckpointIndex >= checkpoints.length - 1;
+    undoBtn.disabled = cpState.currentCheckpointIndex < 0;
+    redoBtn.disabled = cpState.currentCheckpointIndex >= cpState.checkpoints.length - 1;
 
-    // Update opacity
     undoBtn.style.opacity = undoBtn.disabled ? '0.4' : '1';
     redoBtn.style.opacity = redoBtn.disabled ? '0.4' : '1';
-}
-
-// Get current checkpoint index
-export function getCurrentCheckpointIndex() {
-    return currentCheckpointIndex;
 }

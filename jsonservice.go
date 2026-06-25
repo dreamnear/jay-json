@@ -38,7 +38,7 @@ func (j *JSONService) FormatJSON(input string) (string, error) {
 func (j *JSONService) MinifyJSON(input string) (string, error) {
 	obj, err := j.decodeJSON(input)
 	if err != nil {
-		return "", fmt.Errorf("format json: %w", err)
+		return "", fmt.Errorf("minify json: %w", err)
 	}
 
 	minified, err := json.Marshal(obj)

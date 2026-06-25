@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 type WindowManager struct {
@@ -79,6 +80,11 @@ func (w *WindowManager) OpenNewWindow() {
 	w.mu.Lock()
 	w.windows[windowId] = newWindow
 	w.mu.Unlock()
+
+	// Clean up map entry when window closes (C1: wire up RemoveWindow to prevent leak)
+	newWindow.OnWindowEvent(events.Common.WindowClosing, func(event *application.WindowEvent) {
+		w.RemoveWindow(windowId)
+	})
 }
 
 // RemoveWindow removes a closed window from the tracking map
@@ -91,15 +97,20 @@ func (w *WindowManager) RemoveWindow(windowId string) {
 // ToggleAlwaysOnTop toggles the always-on-top state of all windows
 func (w *WindowManager) ToggleAlwaysOnTop() bool {
 	w.mu.Lock()
-	defer w.mu.Unlock()
-
 	w.alwaysOnTop = !w.alwaysOnTop
-
+	alwaysOnTop := w.alwaysOnTop
+	// Snapshot windows under lock, call UI methods after release (H2: avoid blocking under lock)
+	snapshot := make([]*application.WebviewWindow, 0, len(w.windows))
 	for _, window := range w.windows {
-		window.SetAlwaysOnTop(w.alwaysOnTop)
+		snapshot = append(snapshot, window)
+	}
+	w.mu.Unlock()
+
+	for _, window := range snapshot {
+		window.SetAlwaysOnTop(alwaysOnTop)
 	}
 
-	return w.alwaysOnTop
+	return alwaysOnTop
 }
 
 // IsAlwaysOnTop returns the current always-on-top state
